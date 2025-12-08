@@ -1,5 +1,3 @@
-the setup is too basic, study this code and implement a better setup
-
 #!/usr/bin/env python3
 """
 ╔═╗╔═╗╔╦╗╔═╗╦  ╔═╗╦═╗ - AETHER C2 Framework
@@ -1200,5 +1198,3 @@ if __name__ == '__main__':
     setup = AetherSetup()
     setup.run()
 
-
-NB : Adjust according to this bot's functions and configurations and don't create unnecessary files
