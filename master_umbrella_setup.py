@@ -26,9 +26,12 @@ import subprocess
 import time
 import secrets
 import base64
+import yaml
+import hashlib
+import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from cryptography.fernet import Fernet
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -219,6 +222,325 @@ class ConfigurationManager:
             config = config[key]
         config[keys[-1]] = value
         self.save()
+
+# ═══════════════════════════════════════════════════════════════════════════
+# YAML CONFIGURATION LOADER (Unified Config Support)
+# ═══════════════════════════════════════════════════════════════════════════
+
+class ConfigLoader:
+    """
+    YAML-based configuration loader for umbrella_config.yaml
+    Unified configuration management for all framework components (Agent, Server, Bot)
+    Supports dot-notation access, environment variable overrides, and change detection
+    """
+    
+    def __init__(self, config_path: str = "umbrella_config.yaml"):
+        """Initialize config loader with path to master config file"""
+        self.config_path = Path(config_path)
+        self.config = {}
+        self.config_hash = None
+        self.last_loaded = None
+        self.logger = self._setup_logger()
+        self.reload()
+    
+    def _setup_logger(self) -> logging.Logger:
+        """Setup logging for config operations"""
+        logger = logging.getLogger("ConfigLoader")
+        if not logger.handlers:
+            handler = logging.StreamHandler()
+            formatter = logging.Formatter('[%(asctime)s] %(levelname)s - %(message)s')
+            handler.setFormatter(formatter)
+            logger.addHandler(handler)
+            logger.setLevel(logging.INFO)
+        return logger
+    
+    def reload(self) -> bool:
+        """Reload configuration from YAML file. Returns True if config changed."""
+        try:
+            if not self.config_path.exists():
+                self.logger.warning(f"Config file not found: {self.config_path}")
+                return False
+            
+            with open(self.config_path, 'r', encoding='utf-8') as f:
+                new_config = yaml.safe_load(f)
+            
+            if not new_config:
+                self.logger.error("Config file is empty or invalid YAML")
+                return False
+            
+            new_hash = self._calculate_hash(new_config)
+            config_changed = (new_hash != self.config_hash)
+            
+            self.config = new_config
+            self.config_hash = new_hash
+            self.last_loaded = datetime.now()
+            
+            self._apply_env_overrides()
+            self._validate_config()
+            
+            if config_changed:
+                self.logger.info("Configuration reloaded successfully")
+            return True
+        
+        except yaml.YAMLError as e:
+            self.logger.error(f"YAML parsing error: {e}")
+            return False
+        except Exception as e:
+            self.logger.error(f"Failed to load config: {e}")
+            return False
+    
+    def _calculate_hash(self, config: Dict) -> str:
+        """Calculate hash of configuration for change detection"""
+        config_str = json.dumps(config, sort_keys=True)
+        return hashlib.sha256(config_str.encode()).hexdigest()
+    
+    def _apply_env_overrides(self):
+        """Apply environment variable overrides to config"""
+        if os.getenv('RAT_SERVER_IP') and 'server' in self.config:
+            self.config['server']['primary_ip'] = os.getenv('RAT_SERVER_IP')
+        if os.getenv('RAT_SERVER_PORT') and 'server' in self.config:
+            self.config['server']['listen_port'] = int(os.getenv('RAT_SERVER_PORT'))
+        if os.getenv('RAT_API_PORT') and 'server' in self.config:
+            self.config['server']['api_port'] = int(os.getenv('RAT_API_PORT'))
+        
+        if os.getenv('RAT_CALLBACK_IP') and 'agent' in self.config:
+            self.config['agent']['callback_ip'] = os.getenv('RAT_CALLBACK_IP')
+        if os.getenv('RAT_CALLBACK_PORT') and 'agent' in self.config:
+            self.config['agent']['callback_port'] = int(os.getenv('RAT_CALLBACK_PORT'))
+        
+        if os.getenv('RAT_BOT_PREFIX') and 'bot' in self.config:
+            self.config['bot']['whatsapp']['bot_prefix'] = os.getenv('RAT_BOT_PREFIX')
+    
+    def _validate_config(self):
+        """Validate critical configuration values"""
+        try:
+            required_sections = ['server', 'agent', 'bot', 'security']
+            for section in required_sections:
+                if section not in self.config:
+                    self.logger.warning(f"Missing section: {section}")
+            
+            if 'server' in self.config:
+                port = self.config['server'].get('listen_port', 4444)
+                if not (1 <= port <= 65535):
+                    self.logger.warning(f"Invalid server listen_port: {port}")
+            
+            self.logger.debug("Configuration validated")
+        except Exception as e:
+            self.logger.error(f"Validation error: {e}")
+    
+    def get(self, key_path: str, default: Any = None) -> Any:
+        """Get configuration value by dot-notation path (e.g., 'server.listen_port')"""
+        keys = key_path.split('.')
+        value = self.config
+        try:
+            for key in keys:
+                if isinstance(value, dict):
+                    value = value[key]
+                else:
+                    return default
+            return value
+        except (KeyError, TypeError):
+            return default
+    
+    def get_server_config(self) -> Dict:
+        """Get complete server configuration"""
+        return self.config.get('server', {})
+    
+    def get_agent_config(self) -> Dict:
+        """Get complete agent configuration"""
+        return self.config.get('agent', {})
+    
+    def get_bot_config(self) -> Dict:
+        """Get complete bot configuration"""
+        return self.config.get('bot', {})
+    
+    def update(self, key_path: str, value: Any) -> bool:
+        """Update a configuration value and persist to disk"""
+        try:
+            keys = key_path.split('.')
+            config = self.config
+            
+            for key in keys[:-1]:
+                if key not in config:
+                    config[key] = {}
+                config = config[key]
+            
+            config[keys[-1]] = value
+            self._save_config()
+            self.logger.info(f"Updated {key_path}")
+            return True
+        except Exception as e:
+            self.logger.error(f"Failed to update: {e}")
+            return False
+    
+    def _save_config(self) -> bool:
+        """Save current configuration to disk"""
+        try:
+            with open(self.config_path, 'w', encoding='utf-8') as f:
+                yaml.dump(self.config, f, default_flow_style=False, sort_keys=False)
+            self.config_hash = self._calculate_hash(self.config)
+            return True
+        except Exception as e:
+            self.logger.error(f"Failed to save: {e}")
+            return False
+    
+    def get_status(self) -> Dict:
+        """Get configuration status information"""
+        return {
+            'config_path': str(self.config_path),
+            'exists': self.config_path.exists(),
+            'last_loaded': str(self.last_loaded) if self.last_loaded else None,
+            'config_hash': self.config_hash,
+            'server_ip': self.get('server.primary_ip'),
+            'server_port': self.get('server.listen_port'),
+        }
+    
+    def export_all(self) -> str:
+        """Export entire configuration as JSON"""
+        return json.dumps(self.config, indent=2)
+
+# ═══════════════════════════════════════════════════════════════════════════
+# CONFIG WATCHER - File Monitoring & Auto-Reload
+# ═══════════════════════════════════════════════════════════════════════════
+
+class ConfigWatcher:
+    """Monitor config file changes and notify subscribers"""
+    
+    def __init__(self, config_loader: ConfigLoader, check_interval: int = 5):
+        """Initialize config watcher"""
+        self.config_loader = config_loader
+        self.check_interval = check_interval
+        self.watchers = []  # List of callback functions
+        self.last_hash = None
+        self.watching = False
+        self.watch_thread = None
+    
+    def subscribe(self, callback):
+        """Subscribe to config changes"""
+        self.watchers.append(callback)
+    
+    def unsubscribe(self, callback):
+        """Unsubscribe from config changes"""
+        if callback in self.watchers:
+            self.watchers.remove(callback)
+    
+    def start_watching(self):
+        """Start watching config file for changes"""
+        if self.watching:
+            return
+        
+        self.watching = True
+        self.watch_thread = threading.Thread(target=self._watch_loop, daemon=True)
+        self.watch_thread.start()
+        HackerTheme.apply('Config watcher started', HackerTheme.BR_GREEN)
+    
+    def stop_watching(self):
+        """Stop watching config file"""
+        self.watching = False
+        if self.watch_thread:
+            self.watch_thread.join(timeout=2)
+    
+    def _watch_loop(self):
+        """Watch loop that checks for config changes"""
+        while self.watching:
+            try:
+                # Reload and check for changes
+                if self.config_loader.reload():
+                    # Config changed
+                    for callback in self.watchers:
+                        try:
+                            callback(self.config_loader.config)
+                        except Exception as e:
+                            self.config_loader.logger.error(f"Watcher callback error: {e}")
+                
+                time.sleep(self.check_interval)
+            
+            except Exception as e:
+                self.config_loader.logger.error(f"Watch error: {e}")
+                time.sleep(self.check_interval)
+
+# ═══════════════════════════════════════════════════════════════════════════
+# CONFIG BUILDER - Intelligent Config Generation
+# ═══════════════════════════════════════════════════════════════════════════
+
+class ConfigBuilder:
+    """Build optimal configurations based on deployment profile"""
+    
+    @staticmethod
+    def detect_environment() -> Dict[str, Any]:
+        """Detect local environment and deployment type"""
+        import socket
+        
+        detection = {
+            "local_ip": None,
+            "is_vm": False,
+            "platform": sys.platform,
+            "has_docker": os.path.exists("/.dockerenv"),
+        }
+        
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            detection["local_ip"] = s.getsockname()[0]
+            s.close()
+        except:
+            detection["local_ip"] = "127.0.0.1"
+        
+        return detection
+    
+    @staticmethod
+    def recommend_config(profile: str) -> Dict[str, Any]:
+        """Recommend configuration based on profile"""
+        env = ConfigBuilder.detect_environment()
+        
+        recommendations = {
+            "LocalTest": {
+                "server": {
+                    "listen_ip": "0.0.0.0",
+                    "listen_port": 4444,
+                    "api_port": 5000,
+                    "primary_ip": env["local_ip"],
+                    "max_concurrent_agents": 100,
+                },
+                "security": {
+                    "require_auth": True,
+                    "enable_encryption": True,
+                },
+            },
+            "RemoteServer": {
+                "server": {
+                    "listen_ip": "0.0.0.0",
+                    "listen_port": 443,
+                    "api_port": 8443,
+                    "primary_ip": env["local_ip"],
+                    "max_concurrent_agents": 1000,
+                },
+                "security": {
+                    "require_auth": True,
+                    "enable_encryption": True,
+                    "enable_ssl": True,
+                },
+            },
+            "HybridMode": {
+                "server": {
+                    "listen_ip": "0.0.0.0",
+                    "listen_port": 4444,
+                    "api_port": 5000,
+                    "primary_ip": env["local_ip"],
+                    "max_concurrent_agents": 500,
+                    "nat_traversal": {
+                        "enabled": True,
+                        "stun_server": "stun.l.google.com",
+                    },
+                },
+                "security": {
+                    "require_auth": True,
+                    "enable_encryption": True,
+                },
+            },
+        }
+        
+        return recommendations.get(profile, recommendations["LocalTest"])
 
 # ═══════════════════════════════════════════════════════════════════════════
 # DISPLAY UTILITIES
@@ -1229,6 +1551,27 @@ class MainMenu:
         print(f"{HackerTheme.apply('Thanks for using T0OL-B4S3-263!', HackerTheme.BR_GREEN, HackerTheme.BOLD)}".center(76))
         print(f"{HackerTheme.apply('Created by: Hxcker-263', HackerTheme.BR_YELLOW)}".center(76))
         print(f"{HackerTheme.apply('═' * 76, HackerTheme.NEON_PINK)}\n")
+
+# ═══════════════════════════════════════════════════════════════════════════
+# GLOBAL CONFIG SINGLETON & HELPER FUNCTIONS
+# ═══════════════════════════════════════════════════════════════════════════
+
+_global_yaml_config = None
+
+def get_yaml_config(config_path: str = "umbrella_config.yaml") -> ConfigLoader:
+    """Get global YAML config instance (singleton pattern)"""
+    global _global_yaml_config
+    if _global_yaml_config is None:
+        _global_yaml_config = ConfigLoader(config_path)
+    return _global_yaml_config
+
+def config_get(key_path: str, default: Any = None) -> Any:
+    """Convenience function to get config value"""
+    return get_yaml_config().get(key_path, default)
+
+def config_update(key_path: str, value: Any) -> bool:
+    """Convenience function to update config value"""
+    return get_yaml_config().update(key_path, value)
 
 # ═══════════════════════════════════════════════════════════════════════════
 # ENTRY POINT

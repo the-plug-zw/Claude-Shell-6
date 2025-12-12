@@ -16,16 +16,33 @@ deployment_profile: "LocalTest"  # Options: LocalTest, RemoteServer, HybridMode
 # ==============================================================================
 server:
   # Server listening configuration
-  listen_ip: "0.0.0.0"           # Listen on all interfaces
+  listen_ip: "0.0.0.0"            # Listen on all interfaces (secure binding)
   listen_port: 4444               # Agent callback port
-  api_port: 5000                  # REST API for Bot
+  api_port: 5000                  # REST API for Bot (internal)
+  webhook_port: 8888              # Webhook receiver for alerts
   
   # Internal networking
-  primary_ip: "127.0.0.1"         # IP that agents callback to (update for remote)
+  primary_ip: "127.0.0.1"         # IP that agents callback to (update for remote deployment)
+  backup_ip: null                 # Fallback IP for failover
+  
+  # Connection management
   callback_timeout: 30            # seconds before marking agent offline
   heartbeat_interval: 30          # seconds between heartbeats
+  heartbeat_timeout: 10           # seconds to wait for heartbeat response
   max_reconnect_attempts: 5       # max reconnection retries
-  reconnect_backoff: 2            # exponential backoff multiplier
+  reconnect_backoff: 2            # exponential backoff multiplier (2^n)
+  
+  # Network tuning
+  socket_timeout: 60              # socket read timeout
+  buffer_size: 65536              # receive buffer size
+  max_concurrent_agents: 1000     # max simultaneous connections
+  
+  # NAT Traversal
+  nat_traversal:
+    enabled: false                # enable NAT/firewall traversal
+    stun_server: "stun.l.google.com"
+    stun_port: 3478
+    use_upnp: false               # attempt UPnP mapping
   
   # Database
   database:
