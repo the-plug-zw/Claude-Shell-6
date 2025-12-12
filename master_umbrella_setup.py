@@ -26,6 +26,11 @@ import os
 import sys
 import subprocess
 
+# Fix encoding for Windows console
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
 def ensure_dependencies():
     """Auto-detect and install missing dependencies"""
     required_packages = {
