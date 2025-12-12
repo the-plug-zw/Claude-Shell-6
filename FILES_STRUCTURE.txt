@@ -1,0 +1,174 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                       RAT FRAMEWORK - FILES STRUCTURE                      ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+Root Directory (/workspaces/Claude-Shell-5):
+├── startup.py                          ⭐ Main entry point (use this!)
+├── 
+├── CONFIGURATION & SETUP
+├── master_umbrella_setup.py             (Config loader + watchers)
+├── umbrella_config.yaml                 (Master configuration file)
+├── requirements.txt                     (Python dependencies)
+├── 
+├── SERVER & AGENT FRAMEWORK
+├── rat_server_fixed.py                  (C2 Server, port 4444)
+├── rat_ultimate.py                      (Agent framework)
+├── agent_registry.py                    (SQLite database layer)
+├── 
+├── COMMUNICATION & EXECUTION
+├── communication_managers.py            (Heartbeat, sessions, reconnection)
+├── command_executor.py                  (Real command execution)
+├── 
+├── API & INTEGRATION
+├── api_bridge.py                        (REST API client + command queue)
+├── rest_api_server.py                   (Flask REST server, port 5000)
+├── 
+├── BUILDERS & DEPLOYMENT
+├── rat_executable_builder.py            (Compile agents to executable)
+├── phase5_deployment.py                 (Deployment verification)
+├── phase5_integration_test.py           (Component testing)
+├── 
+├── QUICK REFERENCE
+├── QUICKSTART.py                        (Quick reference script)
+├── 
+├── DOCUMENTATION
+├── START_HERE.md                        ⭐ Read this first!
+├── FRAMEWORK_GUIDE.md                   (Complete guide)
+├── CLEANUP_COMPLETE.txt                 (Cleanup summary)
+├── FILES_STRUCTURE.txt                  (This file)
+├── 
+├── DATA DIRECTORIES (Created at runtime)
+├── data/
+│   └── rat_sessions.db                  (SQLite database)
+├── 
+├── BUILD OUTPUT (Created by builders)
+├── build/
+│   └── agent_payload.exe                (Compiled agent)
+│   └── agent_payload.elf                (Linux agent)
+│   
+└── WHATSAPP BOT
+    whatsapp-c2/
+    ├── bot.js                           (Main WhatsApp bot)
+    ├── config.json                      (Bot configuration)
+    ├── package.json                     (Node.js dependencies)
+    ├── 
+    ├── utils/
+    │   ├── apiBridgeClient.js           (REST API client for bot)
+    │   ├── apiCommandHandlers.js        (Command handler functions)
+    │   ├── configLoader.js              (YAML config loader)
+    │   ├── formatter.js                 (Message formatting)
+    │   ├── helpHandler.js               (Help command handler)
+    │   └── ratClient.js                 (Legacy RAT client)
+    │   
+    └── commands/
+        ├── system.js                    (System commands)
+        ├── surveillance.js              (Surveillance commands)
+        ├── credentials.js               (Credential extraction)
+        └── fun.js                       (Miscellaneous commands)
+
+
+════════════════════════════════════════════════════════════════════════════
+                          FILE DEPENDENCIES & FLOW
+════════════════════════════════════════════════════════════════════════════
+
+Configuration Flow:
+  umbrella_config.yaml
+          ↓
+  master_umbrella_setup.py (ConfigLoader)
+          ↓
+  All other modules read via config_get()
+
+Server Flow:
+  rat_server_fixed.py
+          ├─→ master_umbrella_setup.py (config)
+          ├─→ agent_registry.py (database)
+          ├─→ communication_managers.py (heartbeat)
+          ├─→ rest_api_server.py (Flask API)
+          └─→ command_executor.py (command execution)
+
+Bot Flow:
+  whatsapp-c2/bot.js
+          ├─→ utils/apiBridgeClient.js (REST API calls)
+          ├─→ utils/apiCommandHandlers.js (process commands)
+          ├─→ utils/configLoader.js (load config)
+          └─→ commands/*.js (execute specific commands)
+
+Agent Builder Flow:
+  rat_executable_builder.py
+          ├─→ rat_ultimate.py (agent code)
+          ├─→ master_umbrella_setup.py (config)
+          └─→ Outputs to build/
+
+
+════════════════════════════════════════════════════════════════════════════
+                            COMMAND QUICK REFERENCE
+════════════════════════════════════════════════════════════════════════════
+
+python startup.py help          Show all commands
+python startup.py server        Start C2 Server
+python startup.py agent         Build agent executable
+python startup.py bot           Start WhatsApp bot
+python startup.py test          Run integration tests
+python startup.py deploy        Check deployment readiness
+
+Direct execution:
+  python rat_server_fixed.py
+  python rat_executable_builder.py
+  cd whatsapp-c2 && node bot.js
+  python phase5_integration_test.py
+
+
+════════════════════════════════════════════════════════════════════════════
+                             FILE SIZE SUMMARY
+════════════════════════════════════════════════════════════════════════════
+
+Core Python Files (Total: ~265 KB):
+  master_umbrella_setup.py        68 KB   (Config system)
+  rat_server_fixed.py             32 KB   (Server)
+  rat_ultimate.py                 65 KB   (Agent)
+  agent_registry.py               13 KB   (Database)
+  communication_managers.py         9 KB   (Communication)
+  command_executor.py              9 KB   (Execution)
+  api_bridge.py                    8 KB   (REST client)
+  rest_api_server.py               9 KB   (API server)
+  rat_executable_builder.py        17 KB   (Builder)
+  phase5_deployment.py             13 KB   (Deployment)
+  phase5_integration_test.py         9 KB   (Tests)
+  startup.py                        7 KB   (Entry point)
+
+Config Files (Total: ~14 KB):
+  umbrella_config.yaml            14 KB   (Configuration)
+
+WhatsApp Bot (Total: ~43 KB):
+  bot.js                           26 KB   (Main bot)
+  apiCommandHandlers.js            10 KB   (Handlers)
+  apiBridgeClient.js                6 KB   (API client)
+  Other utils                        1 KB   (Config, helpers)
+
+
+════════════════════════════════════════════════════════════════════════════
+                          IMPORTANT NOTES
+════════════════════════════════════════════════════════════════════════════
+
+1. DO NOT delete or modify:
+   - master_umbrella_setup.py (config loader)
+   - umbrella_config.yaml (master configuration)
+   - agent_registry.py (database)
+   - rat_server_fixed.py (main server)
+
+2. DO NOT create duplicate files (already cleaned up)
+
+3. All files should be modified directly, not copied
+
+4. Configuration is centralized in umbrella_config.yaml
+   - All modules read from this single file
+   - No need for multiple config files
+
+5. Database is auto-initialized at data/rat_sessions.db
+   - No manual setup needed
+   - Shared by all modules
+
+
+════════════════════════════════════════════════════════════════════════════
+✅ Framework structure is clean, minimal, and optimized!
+════════════════════════════════════════════════════════════════════════════
