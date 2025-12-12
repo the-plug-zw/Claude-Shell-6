@@ -788,13 +788,13 @@ class MasterSetupWizard:
         for filename, replacements in files_to_update.items():
             if os.path.exists(filename):
                 try:
-                    with open(filename, 'r') as f:
+                    with open(filename, 'r', encoding='utf-8') as f:
                         content = f.read()
                     
                     for old, new in replacements:
                         content = content.replace(old, new)
                     
-                    with open(filename, 'w') as f:
+                    with open(filename, 'w', encoding='utf-8') as f:
                         f.write(content)
                     
                     Display.status(f"  ✓ {filename} configured", "success")

