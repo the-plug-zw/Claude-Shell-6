@@ -4,8 +4,43 @@ RAT Framework - Main Entry Point
 Unified command for running all framework components
 """
 
+# ═══════════════════════════════════════════════════════════════════════════
+# SMART DEPENDENCY AUTO-INSTALLER
+# ═══════════════════════════════════════════════════════════════════════════
+
 import subprocess
 import sys
+
+def ensure_dependencies():
+    """Auto-detect and install missing dependencies"""
+    required_packages = {
+        'flask': 'flask',
+        'yaml': 'pyyaml',
+        'cryptography': 'cryptography',
+    }
+    
+    missing = []
+    for import_name, package_name in required_packages.items():
+        try:
+            __import__(import_name)
+        except ImportError:
+            missing.append((import_name, package_name))
+    
+    if missing:
+        print("⚠️  Missing dependencies detected. Installing...\n")
+        for import_name, package_name in missing:
+            try:
+                print(f"  Installing {package_name}...", end='', flush=True)
+                subprocess.check_call([
+                    sys.executable, '-m', 'pip', 'install', '-q', package_name
+                ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                print(" ✓")
+            except Exception as e:
+                print(f" ✗")
+        print("\n✓ All dependencies ready!\n")
+
+ensure_dependencies()
+
 import argparse
 from pathlib import Path
 

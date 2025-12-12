@@ -18,8 +18,47 @@
 ═══════════════════════════════════════════════════════════════════════════════
 """
 
+# ═══════════════════════════════════════════════════════════════════════════
+# SMART DEPENDENCY AUTO-INSTALLER
+# ═══════════════════════════════════════════════════════════════════════════
+
 import os
 import sys
+import subprocess
+
+def ensure_dependencies():
+    """Auto-detect and install missing dependencies"""
+    required_packages = {
+        'yaml': 'pyyaml',
+        'cryptography': 'cryptography',
+    }
+    
+    missing = []
+    for import_name, package_name in required_packages.items():
+        try:
+            __import__(import_name)
+        except ImportError:
+            missing.append((import_name, package_name))
+    
+    if missing:
+        print("⚠️  Missing dependencies detected. Installing...\n")
+        for import_name, package_name in missing:
+            try:
+                print(f"  Installing {package_name}...", end='', flush=True)
+                subprocess.check_call([
+                    sys.executable, '-m', 'pip', 'install', '-q', package_name
+                ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                print(" ✓")
+            except Exception as e:
+                print(f" ✗ Error: {e}")
+                print(f"\n  Manual installation required:")
+                print(f"    pip install {package_name}\n")
+                sys.exit(1)
+        print("\n✓ Dependencies installed successfully!\n")
+
+ensure_dependencies()
+
+# Now safe to import
 import json
 import socket
 import subprocess
