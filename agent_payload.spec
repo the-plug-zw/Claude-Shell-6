@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['/tmp/rat_build_h5yluftm/agent_payload_wrapped.py'],
+    ['/tmp/rat_build_z6u91k16/agent_payload_wrapped.py'],
     pathex=[],
     binaries=[],
     datas=[],
