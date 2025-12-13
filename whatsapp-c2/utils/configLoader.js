@@ -12,7 +12,7 @@ const __dirname = path.dirname(__filename);
  */
 export class ConfigLoader {
   constructor(configPath = null) {
-    this.configPath = configPath || path.join(__dirname, '../umbrella_config.yaml');
+    this.configPath = configPath || path.join(__dirname, '../../umbrella_config.yaml');
     this.config = null;
     this.load();
   }

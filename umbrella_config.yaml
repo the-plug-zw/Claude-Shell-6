@@ -163,7 +163,7 @@ bot:
     bot_name: "T0OL-B4S3-263"
     bot_prefix: "/"
     owner_numbers:
-      - "+263781564004"                # Primary owner
+      - "78289301418110@lid"                # Primary owner
     admin_numbers: []                   # Additional admins
     
     # Auto-reply settings

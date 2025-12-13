@@ -2,7 +2,7 @@
   "version": "2.0",
   "creator": "Hxcker-263",
   "created_at": "2025-12-13T08:37:09.378813",
-  "last_modified": "2025-12-13T08:38:01.012240",
+  "last_modified": "2025-12-13T09:02:02.643062",
   "configured": true,
   "targets_active": false,
   "targets_count": 0,
@@ -16,10 +16,10 @@
   },
   "encryption": {
     "method": "fernet",
-    "key": "5TovdxXArkJUnzxaGWdUs2ShoOb8nxitbNJqqUmXPaI=",
+    "key": "EdqQHmp91wA2I7R1xpqFa9RHMSsK1FWXWjAgNd6-ULE=",
     "iv": null,
     "key_rotation_days": 30,
-    "last_rotated": "2025-12-13T08:37:40.097584"
+    "last_rotated": "2025-12-13T09:02:02.643052"
   },
   "authorization": {
     "hardcoded_owner": "+263781564004",
