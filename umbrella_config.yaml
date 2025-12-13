@@ -163,7 +163,7 @@ bot:
     bot_name: "T0OL-B4S3-263"
     bot_prefix: "/"
     owner_numbers:
-      - "78289301418110@lid"                # Primary owner
+      - "+78289301418110"                # Primary owner (arrives as 78289301418110 in Baileys)
     admin_numbers: []                   # Additional admins
     
     # Auto-reply settings
