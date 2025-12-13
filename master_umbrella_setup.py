@@ -25,6 +25,7 @@
 import os
 import sys
 import subprocess
+import threading
 
 # Fix encoding for Windows console
 if sys.platform == 'win32':
@@ -881,6 +882,13 @@ class KeyDistribution:
         Display.header("DISTRIBUTION KEYS", "🔑")
         
         package = self.get_distribution_package()
+        
+        # Ensure encryption key exists
+        key = package['encryption']['key']
+        if not key:
+            Display.status("Generating encryption key...", "info")
+            key = self.generate_master_key()
+            package = self.get_distribution_package()
         
         print(f"{HackerTheme.apply('═' * 76, HackerTheme.NEON_GREEN)}")
         print(f"{HackerTheme.apply('C2 SERVER INFORMATION', HackerTheme.BR_YELLOW, HackerTheme.BOLD)}")

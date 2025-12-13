@@ -1,0 +1,83 @@
+{
+  "version": "2.0",
+  "creator": "Hxcker-263",
+  "created_at": "2025-12-13T08:37:09.378813",
+  "last_modified": "2025-12-13T08:38:01.012240",
+  "configured": true,
+  "targets_active": false,
+  "targets_count": 0,
+  "server": {
+    "mode": "network",
+    "primary_ip": "10.0.1.245",
+    "backup_ip": null,
+    "c2_port": 4444,
+    "api_port": 5000,
+    "webhook_port": 8888
+  },
+  "encryption": {
+    "method": "fernet",
+    "key": "5TovdxXArkJUnzxaGWdUs2ShoOb8nxitbNJqqUmXPaI=",
+    "iv": null,
+    "key_rotation_days": 30,
+    "last_rotated": "2025-12-13T08:37:40.097584"
+  },
+  "authorization": {
+    "hardcoded_owner": "+263781564004",
+    "authorized_owners": [
+      "+263781564004"
+    ],
+    "require_confirmation": true,
+    "confirmation_keyword": "CONFIRM_TARGETS_263"
+  },
+  "c2_channels": {
+    "https": {
+      "enabled": false,
+      "certificate": null
+    },
+    "dns": {
+      "enabled": false,
+      "domain": null
+    },
+    "proxy": {
+      "enabled": false,
+      "proxy_url": null
+    },
+    "tor": {
+      "enabled": false,
+      "control_port": 9051
+    },
+    "websocket": {
+      "enabled": false,
+      "endpoint": null
+    }
+  },
+  "obfuscation": {
+    "enabled": true,
+    "level": 4,
+    "techniques": {
+      "string_encoding": true,
+      "control_flow": true,
+      "junk_code": true,
+      "polymorphic": true
+    },
+    "entropy_size_kb": 2
+  },
+  "whatsapp": {
+    "enabled": false,
+    "owners": [
+      "+263781564004"
+    ],
+    "command_prefix": "/",
+    "auto_respond": true
+  },
+  "targets": {
+    "managed_list": [],
+    "require_manual_confirmation": true
+  },
+  "logging": {
+    "enabled": true,
+    "log_file": "tool_base_263.log",
+    "log_level": "INFO",
+    "compress_logs": true
+  }
+}

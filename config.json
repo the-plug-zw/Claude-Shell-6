@@ -1,0 +1,19 @@
+{
+  "version": "2.0",
+  "creator": "Hxcker-263",
+  "c2_server": {
+    "ip": "10.0.1.245",
+    "c2_port": 4444,
+    "api_port": 5000
+  },
+  "encryption": {
+    "method": "fernet",
+    "key": "5TovdxXArkJUnzxaGWdUs2ShoOb8nxitbNJqqUmXPaI="
+  },
+  "authorization": {
+    "owners": [
+      "+263781564004"
+    ]
+  },
+  "timestamp": "2025-12-13T08:39:16.793568"
+}
